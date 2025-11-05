@@ -14,6 +14,7 @@ const nombresCapas = {
   'cajas de captacion': 'Cajas de Captación',
   'cajas derivadoras': 'Cajas Derivadoras',
   'cajas rompedoras de presion': 'Cajas Rompedoras de Presión',
+  'campamentos_edomex': 'Campamentos Grupo Tlaloc',
   'carcamos': 'Cárcamos',
   'fosas septicas': 'Fosas Sépticas',
   'galeria filtrante': 'Galería Filtrante',
@@ -376,6 +377,7 @@ function updateSymbology() {
     'cajas de captacion': 'tipo',
     'cajas derivadoras': 'tipo',
     'cajas rompedoras de presion': 'tipo',
+    'campamentos_edomex': 'tipo',
     'carcamos': 'tipo',
     'fosas septicas': 'tipo',
     'galeria filtrante': 'tipo',
@@ -1107,6 +1109,7 @@ async function conectar() {
       'cajas de captacion',
       'cajas derivadoras',
       'cajas rompedoras de presion',
+      'campamentos_edomex',
       'carcamos',
       'fosas septicas',
       'galeria filtrante',
@@ -1189,15 +1192,17 @@ async function conectar() {
           } else if (tbl === 'estadomex' || tbl === 'estadomex_geojson') {
             color = '#000000'; // Negro para límite estatal
           } else if (tbl.includes('cajas')) {
-            color = '#FFA726'; // Naranja para cajas
+            color = '#b48a3f'; // Naranja para cajas
+          } else if (tbl === 'campamentos_edomex') {
+            color = '#4CAF50'; // Verde para campamentos Tlaloc
           } else if (tbl === 'carcamos') {
-            color = '#FF5722'; // Naranja oscuro para cárcamos
+            color = '#e98a3f'; // Naranja oscuro para cárcamos
           } else if (tbl === 'fosas septicas') {
-            color = '#795548'; // Café para fosas sépticas
+            color = '#774720ff'; // Café para fosas sépticas
           } else if (tbl === 'galeria filtrante') {
-            color = '#00BCD4'; // Cian para galería filtrante
+            color = '#722bb4'; // Cian para galería filtrante
           } else if (tbl === 'manantiales') {
-            color = '#4DD0E1'; // Cian claro para manantiales
+            color = '#2b51b4'; // Cian claro para manantiales
           } else if (tbl === 'obras de toma') {
             color = '#26C6DA'; // Cian medio para obras de toma
           } else if (tbl.includes('plantas de bombeo')) {
@@ -1296,6 +1301,7 @@ function mostrarCapas() {
     'cajas de captacion',
     'cajas derivadoras',
     'cajas rompedoras de presion',
+    'campamentos_edomex',
     'carcamos',
     'fosas septicas',
     'galeria filtrante',
@@ -1472,6 +1478,13 @@ async function toggleCapa(nombre, activar) {
     console.log(`🎯 Última capa activada: ${nombre}`);
   } else {
     if (capasActivas[nombre]) {
+      // Si es la capa de regiones, eliminar las etiquetas
+      if ((nombre === 'regiones' || nombre === 'regiones_geojson') && capasActivas[nombre].labels) {
+        capasActivas[nombre].labels.forEach(label => {
+          map.removeLayer(label);
+        });
+      }
+      
       map.removeLayer(capasActivas[nombre]);
       delete capasActivas[nombre];
       // Si se desactiva la última capa activada, actualizar a null o a otra capa activa
@@ -1651,12 +1664,12 @@ async function cargarCapa(nombre) {
       const geoJsonLayer = L.geoJSON(null, {
         pointToLayer: (feature, latlng) => {
           return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: colorMap[feature.properties.name] || '#999999',
-            color: '#ffffff',  // Contorno blanco
-            weight: 1.5,  // Línea delgada de contorno
+            radius: 7,
+            fillColor: colorMap[feature.properties.name] || '#0066CC',
+            color: '#ffffff',
+            weight: 2,
             opacity: 1,
-            fillOpacity: 1.0  // Relleno sólido sin transparencia
+            fillOpacity: 0.85
           });
         },
         onEachFeature: (feature, layer) => {
@@ -1725,12 +1738,12 @@ async function cargarCapa(nombre) {
         pointToLayer: (feature, latlng) => {
           const proyecto = feature.properties.PROYECTO || feature.properties.proyecto || 'Sin Proyecto';
           return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: colorMap[proyecto] || '#999999',
-            color: '#ffffff',  // Contorno blanco
-            weight: 1.5,  // Línea delgada de contorno
+            radius: 7,
+            fillColor: colorMap[proyecto] || '#b48a3f',
+            color: '#ffffff',
+            weight: 2,
             opacity: 1,
-            fillOpacity: 1.0  // Relleno sólido sin transparencia
+            fillOpacity: 0.85
           });
         },
         style: (feature) => {
@@ -1784,6 +1797,74 @@ async function cargarCapa(nombre) {
       geoJsonLayer.addTo(map);
       capasActivas[nombre] = geoJsonLayer;
     }
+    else if (nombre === 'campamentos_edomex') {
+      // Estilo para Campamentos Grupo Tlaloc - Verde
+      const tipos = [...new Set(data.map(d => d.tipo || d.TIPO || 'Sin Tipo'))];
+      const colorMap = {};
+      
+      // Generar tonos de verde para cada tipo
+      const tonosVerdes = ['#2E7D32', '#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', '#A5D6A7'];
+      
+      tipos.forEach((t, idx) => {
+        colorMap[t] = tonosVerdes[idx % tonosVerdes.length];
+      });
+      
+      const geoJsonLayer = L.geoJSON(null, {
+        pointToLayer: (feature, latlng) => {
+          const tipo = feature.properties.tipo || feature.properties.TIPO || 'Sin Tipo';
+          return L.circleMarker(latlng, {
+            radius: 7,
+            fillColor: colorMap[tipo] || '#4CAF50',
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.85
+          });
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties;
+          let popup = '<b>Campamentos Grupo Tlaloc</b><br>';
+          popup += `<b>Tipo:</b> ${props.tipo || props.TIPO || 'Sin Tipo'}<br>`;
+          Object.keys(props).forEach(key => {
+            if (key !== 'geom' && key !== 'tipo' && key !== 'TIPO') {
+              popup += `${key}: ${props[key]}<br>`;
+            }
+          });
+          layer.bindPopup(popup);
+        }
+      });
+      
+      data.forEach(row => {
+        const geomField = config.columna_geom || 'geom';
+        if (row[geomField]) {
+          let geometry = typeof row[geomField] === 'string' ? JSON.parse(row[geomField]) : row[geomField];
+          
+          if (geometry.coordinates) {
+            geometry = reprojectGeometry(geometry);
+            
+            if (isValidGeometry(geometry)) {
+              geoJsonLayer.addData({
+                type: 'Feature',
+                properties: row,
+                geometry: geometry
+              });
+            } else {
+              console.warn(`Geometría inválida encontrada en ${nombre}`);
+            }
+          }
+        }
+      });
+      
+      const featureCount = geoJsonLayer.getLayers().length;
+      console.log(`✅ ${nombre}: ${featureCount} features válidas de ${data.length} registros`);
+      
+      if (featureCount === 0) {
+        throw new Error('No se encontraron geometrías válidas en la capa');
+      }
+      
+      geoJsonLayer.addTo(map);
+      capasActivas[nombre] = geoJsonLayer;
+    }
     else if (nombre === 'lineas de conduccion-drenaje') {
       // Paleta de colores variados para drenaje
       const coloresDrenaje = [
@@ -1802,12 +1883,12 @@ async function cargarCapa(nombre) {
         pointToLayer: (feature, latlng) => {
           const proyecto = feature.properties.PROYECTO || feature.properties.proyecto || 'Sin Proyecto';
           return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: colorMap[proyecto] || '#999999',
-            color: '#ffffff',  // Contorno blanco
-            weight: 1.5,  // Línea delgada de contorno
+            radius: 7,
+            fillColor: colorMap[proyecto] || '#8B4513',
+            color: '#ffffff',
+            weight: 2,
             opacity: 1,
-            fillOpacity: 1.0  // Relleno sólido sin transparencia
+            fillOpacity: 0.85
           });
         },
         style: (feature) => {
@@ -1881,12 +1962,12 @@ async function cargarCapa(nombre) {
         pointToLayer: (feature, latlng) => {
           const proyecto = feature.properties.PROYECTO || feature.properties.proyecto || 'Sin Proyecto';
           return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: colorMap[proyecto] || '#999999',
-            color: '#ffffff',  // Contorno blanco
-            weight: 1.5,  // Línea delgada de contorno
+            radius: 7,
+            fillColor: colorMap[proyecto] || '#FF6B6B',
+            color: '#ffffff',
+            weight: 2,
             opacity: 1,
-            fillOpacity: 1.0  // Relleno sólido sin transparencia
+            fillOpacity: 0.85
           });
         },
         style: (feature) => {
@@ -1958,12 +2039,12 @@ async function cargarCapa(nombre) {
         pointToLayer: (feature, latlng) => {
           const proyecto = feature.properties.PROYECTO || feature.properties.proyecto || 'Sin Proyecto';
           return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: colorMap[proyecto] || '#999999',
-            color: '#ffffff',  // Contorno blanco
-            weight: 1.5,  // Línea delgada de contorno
+            radius: 7,
+            fillColor: colorMap[proyecto] || '#3d3d3d',
+            color: '#ffffff',
+            weight: 2,
             opacity: 1,
-            fillOpacity: 1.0  // Relleno sólido sin transparencia
+            fillOpacity: 0.85
           });
         },
         style: (feature) => {
@@ -2076,6 +2157,9 @@ async function cargarCapa(nombre) {
       const municipios = [...new Set(data.map(d => d.municipi_1 || d.MUNICIPI_1 || 'Sin Municipio'))];
       const colorMap = {};
       
+      // Array para guardar todas las etiquetas de esta capa
+      const layerLabels = [];
+      
       // Generar colores para cada municipio
       municipios.forEach((m, idx) => {
         colorMap[m] = colores[idx % colores.length];
@@ -2094,14 +2178,61 @@ async function cargarCapa(nombre) {
         },
         onEachFeature: (feature, layer) => {
           const props = feature.properties;
+          const municipioLabel = props.municipi_1 || props.MUNICIPI_1 || 'Sin Municipio';
+          
+          // Crear popup
           let popup = '<b>Regionalización</b><br>';
-          popup += `<b>Municipio:</b> ${props.municipi_1 || props.MUNICIPI_1 || 'Sin Municipio'}<br>`;
+          popup += `<b>Municipio:</b> ${municipioLabel}<br>`;
           Object.keys(props).forEach(key => {
             if (key !== 'geom' && key !== 'municipi_1' && key !== 'MUNICIPI_1') {
               popup += `${key}: ${props[key]}<br>`;
             }
           });
           layer.bindPopup(popup);
+          
+          // Agregar etiqueta permanente con el nombre del municipio
+          if (municipioLabel && municipioLabel !== 'Sin Municipio') {
+            const bounds = layer.getBounds();
+            const center = bounds.getCenter();
+            
+            // Calcular el desplazamiento hacia la izquierda (20% del ancho del bounds)
+            const boundsWidth = bounds.getEast() - bounds.getWest();
+            const offsetLng = boundsWidth * 0.20;
+            
+            // Aplicar el desplazamiento
+            const adjustedCenter = L.latLng(center.lat, center.lng - offsetLng);
+            
+            const label = L.marker(adjustedCenter, {
+              icon: L.divIcon({
+                className: 'region-label',
+                html: `<div style="
+                  font-size: 11px;
+                  font-weight: 700;
+                  color: #000000;
+                  text-align: center;
+                  white-space: nowrap;
+                  text-shadow: 
+                    -1px -1px 0 #fff,
+                    1px -1px 0 #fff,
+                    -1px 1px 0 #fff,
+                    1px 1px 0 #fff,
+                    -2px 0 0 #fff,
+                    2px 0 0 #fff,
+                    0 -2px 0 #fff,
+                    0 2px 0 #fff;
+                  pointer-events: none;
+                  padding: 2px 4px;
+                ">${municipioLabel}</div>`,
+                iconSize: [0, 0],
+                iconAnchor: [0, 0]
+              }),
+              interactive: false
+            });
+            
+            // Guardar referencia a la etiqueta
+            layerLabels.push(label);
+            label.addTo(map);
+          }
         }
       });
       
@@ -2135,24 +2266,27 @@ async function cargarCapa(nombre) {
 
       geoJsonLayer.addTo(map);
       capasActivas[nombre] = geoJsonLayer;
+      
+      // Guardar las etiquetas asociadas a esta capa
+      geoJsonLayer.labels = layerLabels;
     }
     else {
       const geoJsonLayer = L.geoJSON(null, {
         pointToLayer: (feature, latlng) => {
           return L.circleMarker(latlng, {
-            radius: 6,
+            radius: 7,
             fillColor: config.color,
-            color: '#ffffff',  // Contorno blanco
-            weight: 1.5,  // Línea delgada de contorno
+            color: '#ffffff',
+            weight: 2,
             opacity: 1,
-            fillOpacity: 1.0  // Relleno sólido sin transparencia
+            fillOpacity: 0.85
           });
         },
         style: () => ({
           color: config.color,
           weight: 2,
-          opacity: 0.7,
-          fillOpacity: 0.3
+          opacity: 0.8,
+          fillOpacity: 0.4
         }),
         onEachFeature: (feature, layer) => {
           const props = feature.properties;
@@ -2539,6 +2673,430 @@ function buscarCoordenadasFloat() {
   document.getElementById('coord-search-inputs-float').style.display = 'none';
   document.getElementById('search-btn-float').style.background = '';
 }
+
+// ========== FUNCIONES PARA MANEJO DE KML/KMZ ==========
+
+// Variable global para almacenar las capas KML cargadas
+let kmlLayers = [];
+let kmlLayerCounter = 0;
+
+// Función para manejar la carga de archivos KML/KMZ
+async function handleKmlUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const fileName = file.name;
+  const fileExtension = fileName.split('.').pop().toLowerCase();
+
+  try {
+    showLoading('Cargando archivo', 'Procesando ' + fileName + '...');
+
+    if (fileExtension === 'kmz') {
+      // Procesar archivo KMZ (comprimido)
+      await processKmzFile(file, fileName);
+    } else if (fileExtension === 'kml') {
+      // Procesar archivo KML
+      await processKmlFile(file, fileName);
+    } else {
+      alert('Por favor selecciona un archivo KML o KMZ válido');
+      hideLoading();
+      return;
+    }
+
+    // Limpiar el input para poder cargar el mismo archivo nuevamente si es necesario
+    event.target.value = '';
+    hideLoading();
+
+  } catch (error) {
+    console.error('Error al cargar el archivo:', error);
+    alert('Error al cargar el archivo: ' + error.message);
+    hideLoading();
+  }
+}
+
+// Función para procesar archivos KMZ
+async function processKmzFile(file, fileName) {
+  const zip = new JSZip();
+  const contents = await zip.loadAsync(file);
+  
+  // Buscar el archivo .kml dentro del KMZ
+  let kmlFile = null;
+  for (let filename in contents.files) {
+    if (filename.toLowerCase().endsWith('.kml')) {
+      kmlFile = contents.files[filename];
+      break;
+    }
+  }
+
+  if (!kmlFile) {
+    throw new Error('No se encontró archivo KML dentro del KMZ');
+  }
+
+  const kmlText = await kmlFile.async('string');
+  loadKmlFromText(kmlText, fileName);
+}
+
+// Función para procesar archivos KML
+async function processKmlFile(file, fileName) {
+  const reader = new FileReader();
+  
+  return new Promise((resolve, reject) => {
+    reader.onload = function(e) {
+      try {
+        const kmlText = e.target.result;
+        loadKmlFromText(kmlText, fileName);
+        resolve();
+      } catch (error) {
+        reject(error);
+      }
+    };
+    
+    reader.onerror = function() {
+      reject(new Error('Error al leer el archivo'));
+    };
+    
+    reader.readAsText(file);
+  });
+}
+
+// Función para cargar KML desde texto
+function loadKmlFromText(kmlText, fileName) {
+  try {
+    // Crear un blob y URL temporal para el archivo
+    const blob = new Blob([kmlText], { type: 'application/vnd.google-earth.kml+xml' });
+    const url = URL.createObjectURL(blob);
+
+    // Usar leaflet-omnivore para cargar el KML
+    const kmlLayer = omnivore.kml(url);
+    
+    kmlLayer.on('ready', function() {
+      // Liberar la URL temporal
+      URL.revokeObjectURL(url);
+      
+      // Array para guardar las features individuales
+      const features = [];
+      
+      // Aplicar estilos personalizados a las características
+      kmlLayer.eachLayer(function(layer) {
+        if (layer.setStyle) {
+          layer.setStyle({
+            color: '#8a2035',
+            weight: 3,
+            opacity: 0.8,
+            fillColor: '#b99056',
+            fillOpacity: 0.3
+          });
+        }
+        
+        // Guardar referencia a cada feature con su nombre y bounds
+        const featureName = (layer.feature && layer.feature.properties && layer.feature.properties.name) 
+          ? layer.feature.properties.name 
+          : 'Sin nombre';
+        
+        features.push({
+          name: featureName,
+          layer: layer,
+          bounds: layer.getBounds ? layer.getBounds() : null
+        });
+        
+        // Agregar popup con información
+        if (layer.feature && layer.feature.properties) {
+          const props = layer.feature.properties;
+          
+          // Lista de propiedades técnicas que no queremos mostrar
+          const technicalProps = [
+            'stroke', 'stroke-opacity', 'stroke-width', 
+            'fill', 'fill-opacity', 
+            'marker-color', 'marker-size', 'marker-symbol',
+            'styleUrl', 'styleHash', 'styleMapHash',
+            '_storage_options', '_umap_options'
+          ];
+          
+          let popupContent = '<div style="max-width: 250px;">';
+          popupContent += '<b style="color: #8a2035; font-size: 14px; display: block; margin-bottom: 8px;">' + (props.name || 'Sin nombre') + '</b>';
+          
+          if (props.description) {
+            popupContent += '<div style="font-size: 12px; color: #666; margin-bottom: 8px;">' + props.description + '</div>';
+          }
+          
+          // Agregar otras propiedades, filtrando las técnicas
+          for (let key in props) {
+            // Filtrar propiedades que no queremos mostrar
+            if (key !== 'name' && 
+                key !== 'description' && 
+                !technicalProps.includes(key) && 
+                !key.startsWith('_') &&
+                props[key]) {
+              popupContent += '<div style="font-size: 11px; margin: 4px 0;"><b>' + key + ':</b> ' + props[key] + '</div>';
+            }
+          }
+          
+          popupContent += '</div>';
+          layer.bindPopup(popupContent);
+        }
+      });
+      
+      // Agregar la capa al mapa
+      kmlLayer.addTo(map);
+      
+      // Contar características
+      let featureCount = features.length;
+      
+      // Guardar información de la capa
+      kmlLayerCounter++;
+      const layerInfo = {
+        id: 'kml_' + kmlLayerCounter,
+        name: fileName,
+        layer: kmlLayer,
+        visible: true,
+        featureCount: featureCount,
+        features: features // Guardar las features individuales
+      };
+      
+      kmlLayers.push(layerInfo);
+      
+      // Actualizar la lista en la interfaz
+      updateKmlLayersList();
+      
+      // Hacer zoom a la extensión de la capa
+      try {
+        const bounds = kmlLayer.getBounds();
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
+      } catch (e) {
+        console.log('No se pudo hacer zoom automático');
+      }
+    });
+    
+    kmlLayer.on('error', function(e) {
+      console.error('Error al cargar KML:', e);
+      alert('Error al procesar el archivo KML');
+    });
+    
+  } catch (error) {
+    console.error('Error en loadKmlFromText:', error);
+    throw error;
+  }
+}
+
+// Función para actualizar la lista de capas KML
+function updateKmlLayersList() {
+  const container = document.getElementById('kml-layers-list-sidebar');
+  const clearBtn = document.getElementById('clear-kml-btn');
+  
+  if (kmlLayers.length === 0) {
+    container.innerHTML = '<div class="kml-empty-state">No hay archivos cargados</div>';
+    clearBtn.disabled = true;
+    return;
+  }
+  
+  clearBtn.disabled = false;
+  container.innerHTML = '';
+  
+  kmlLayers.forEach((layerInfo, index) => {
+    const item = document.createElement('div');
+    item.className = 'kml-layer-item';
+    
+    // Crear el header con info básica y acciones
+    const hasMultipleFeatures = layerInfo.features && layerInfo.features.length > 1;
+    
+    item.innerHTML = `
+      <div class="kml-layer-header">
+        <div class="kml-layer-info">
+          <div class="kml-layer-name" title="${layerInfo.name}">${layerInfo.name}</div>
+          <div class="kml-layer-features">${layerInfo.featureCount} objeto(s)</div>
+        </div>
+        <div class="kml-layer-actions">
+          ${hasMultipleFeatures ? `
+          <button class="kml-expand-btn" onclick="toggleKmlFeaturesList(${index})" title="Ver objetos">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#b99056">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </button>
+          ` : ''}
+          <button class="kml-action-btn visibility-btn ${layerInfo.visible ? '' : 'hidden'}" 
+                  onclick="toggleKmlLayerVisibility(${index})" 
+                  title="${layerInfo.visible ? 'Ocultar' : 'Mostrar'}">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              ${layerInfo.visible ? 
+                '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>' :
+                '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>'
+              }
+            </svg>
+          </button>
+          <button class="kml-action-btn" onclick="zoomToKmlLayer(${index})" title="Zoom a capa">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
+            </svg>
+          </button>
+          <button class="kml-action-btn" onclick="removeKmlLayer(${index})" title="Eliminar">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // Si tiene múltiples features, agregar la lista expandible
+    if (hasMultipleFeatures) {
+      const featuresList = document.createElement('div');
+      featuresList.className = 'kml-features-list';
+      featuresList.id = `kml-features-${index}`;
+      
+      layerInfo.features.forEach((feature, featureIndex) => {
+        const featureItem = document.createElement('div');
+        featureItem.className = 'kml-feature-item';
+        featureItem.innerHTML = `
+          <div class="kml-feature-name" title="${feature.name}">${feature.name}</div>
+          <button class="kml-feature-zoom-btn" onclick="zoomToKmlFeature(${index}, ${featureIndex})" title="Zoom">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
+            </svg>
+          </button>
+        `;
+        featuresList.appendChild(featureItem);
+      });
+      
+      item.appendChild(featuresList);
+    }
+    
+    container.appendChild(item);
+  });
+}
+
+// Función para expandir/colapsar la lista de features
+function toggleKmlFeaturesList(index) {
+  const featuresList = document.getElementById(`kml-features-${index}`);
+  const expandBtn = event.currentTarget;
+  
+  if (featuresList) {
+    featuresList.classList.toggle('expanded');
+    expandBtn.classList.toggle('expanded');
+  }
+}
+
+// Función para hacer zoom a una feature específica
+function zoomToKmlFeature(layerIndex, featureIndex) {
+  if (layerIndex < 0 || layerIndex >= kmlLayers.length) return;
+  
+  const layerInfo = kmlLayers[layerIndex];
+  if (!layerInfo.features || featureIndex < 0 || featureIndex >= layerInfo.features.length) return;
+  
+  const feature = layerInfo.features[featureIndex];
+  
+  // Si la capa está oculta, mostrarla primero
+  if (!layerInfo.visible) {
+    layerInfo.layer.addTo(map);
+    layerInfo.visible = true;
+    updateKmlLayersList();
+  }
+  
+  // Hacer zoom a la feature
+  if (feature.bounds && feature.bounds.isValid()) {
+    map.fitBounds(feature.bounds, { padding: [50, 50] });
+    
+    // Si tiene popup, abrirlo
+    if (feature.layer && feature.layer.getPopup) {
+      setTimeout(() => {
+        feature.layer.openPopup();
+      }, 300);
+    }
+  } else if (feature.layer && feature.layer.getLatLng) {
+    // Para puntos
+    const latlng = feature.layer.getLatLng();
+    map.setView(latlng, 16);
+    setTimeout(() => {
+      if (feature.layer.openPopup) {
+        feature.layer.openPopup();
+      }
+    }, 300);
+  }
+}
+
+// Función para alternar la visibilidad de una capa KML
+function toggleKmlLayerVisibility(index) {
+  if (index < 0 || index >= kmlLayers.length) return;
+  
+  const layerInfo = kmlLayers[index];
+  
+  if (layerInfo.visible) {
+    map.removeLayer(layerInfo.layer);
+    layerInfo.visible = false;
+  } else {
+    layerInfo.layer.addTo(map);
+    layerInfo.visible = true;
+  }
+  
+  updateKmlLayersList();
+}
+
+// Función para hacer zoom a una capa KML
+function zoomToKmlLayer(index) {
+  if (index < 0 || index >= kmlLayers.length) return;
+  
+  const layerInfo = kmlLayers[index];
+  
+  // Si la capa está oculta, mostrarla primero
+  if (!layerInfo.visible) {
+    layerInfo.layer.addTo(map);
+    layerInfo.visible = true;
+    updateKmlLayersList();
+  }
+  
+  try {
+    const bounds = layerInfo.layer.getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  } catch (e) {
+    console.error('Error al hacer zoom:', e);
+    alert('No se pudo calcular la extensión de esta capa');
+  }
+}
+
+// Función para eliminar una capa KML específica
+function removeKmlLayer(index) {
+  if (index < 0 || index >= kmlLayers.length) return;
+  
+  const layerInfo = kmlLayers[index];
+  
+  // Remover la capa del mapa
+  if (layerInfo.visible) {
+    map.removeLayer(layerInfo.layer);
+  }
+  
+  // Remover de la lista
+  kmlLayers.splice(index, 1);
+  
+  // Actualizar la interfaz
+  updateKmlLayersList();
+}
+
+// Función para limpiar todas las capas KML
+function clearAllKml() {
+  if (kmlLayers.length === 0) {
+    return;
+  }
+  
+  // Remover todas las capas del mapa
+  kmlLayers.forEach(layerInfo => {
+    if (layerInfo.visible) {
+      map.removeLayer(layerInfo.layer);
+    }
+  });
+  
+  // Limpiar el array
+  kmlLayers = [];
+  
+  // Actualizar la interfaz
+  updateKmlLayersList();
+}
+
+// ========== FIN DE FUNCIONES KML/KMZ ==========
 
 // Conectar automáticamente a Supabase al cargar la página
 window.addEventListener('DOMContentLoaded', function() {

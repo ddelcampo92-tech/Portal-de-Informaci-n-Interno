@@ -94,6 +94,7 @@
       background: #dddddd;
       box-shadow: 1px 0 3px rgba(0,0,0,0.08);
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 20px;
       z-index: 500;
       transition: transform 0.3s ease, opacity 0.3s ease;
@@ -2233,4 +2234,343 @@
       display: block;
       margin-bottom: 5px;
       font-size: 13px;
+    }
+    
+    /* Estilos para las etiquetas de regiones */
+    .region-label {
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      z-index: 600 !important;
+    }
+    
+    .region-label div {
+      pointer-events: none !important;
+    }
+    
+    /* Estilos para la sección de KML/KMZ en el sidebar */
+    .kml-section {
+      background: rgba(185, 144, 86, 0.15);
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .kml-section h3 {
+      font-size: 12px;
+      margin-bottom: 8px;
+      color: #8a2035;
+      font-weight: 600;
+      text-align: center;
+    }
+    
+    .kml-buttons-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .kml-upload-btn {
+      flex: 1;
+      padding: 8px 10px;
+      background: linear-gradient(135deg, rgba(138, 32, 53, 0.75) 0%, rgba(109, 24, 41, 0.75) 100%);
+      color: white;
+      border: 2px solid #b99056;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+    
+    .kml-upload-btn:hover {
+      background: linear-gradient(135deg, rgba(160, 40, 66, 0.85) 0%, rgba(138, 32, 53, 0.85) 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(138, 32, 53, 0.3);
+      border-color: #d4a871;
+    }
+    
+    .kml-upload-btn:active {
+      transform: translateY(0);
+    }
+    
+    .kml-upload-btn svg {
+      width: 14px !important;
+      height: 14px !important;
+      margin-right: 5px !important;
+    }
+    
+    .kml-clear-btn-simple {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      background: linear-gradient(135deg, rgba(138, 32, 53, 0.8) 0%, rgba(109, 24, 41, 0.8) 100%);
+      color: white;
+      border: 2px solid rgba(185, 144, 86, 0.6);
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      flex-shrink: 0;
+    }
+    
+    .kml-clear-btn-simple:hover:not(:disabled) {
+      background: linear-gradient(135deg, rgba(160, 40, 66, 0.9) 0%, rgba(138, 32, 53, 0.9) 100%);
+      border-color: #b99056;
+      transform: scale(1.1) translateY(-2px);
+      box-shadow: 0 4px 10px rgba(138, 32, 53, 0.35);
+    }
+    
+    .kml-clear-btn-simple:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .kml-clear-btn-simple svg {
+      width: 16px !important;
+      height: 16px !important;
+    }
+    
+    #kml-layers-list-sidebar {
+      max-height: 250px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      margin-top: 0;
+    }
+    
+    .kml-layer-item {
+      background: white;
+      border: 1.5px solid rgba(138, 32, 53, 0.15);
+      border-radius: 5px;
+      padding: 6px;
+      margin-bottom: 5px;
+      transition: all 0.2s;
+    }
+    
+    .kml-layer-item:hover {
+      background: rgba(138, 32, 53, 0.05);
+      border-color: #8a2035;
+      transform: translateX(2px);
+    }
+    
+    .kml-layer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    
+    .kml-layer-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 2px;
+      min-width: 0;
+    }
+    
+    .kml-layer-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: #8a2035;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .kml-layer-features {
+      font-size: 8px;
+      color: #666;
+    }
+    
+    .kml-layer-actions {
+      display: flex;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+    
+    .kml-action-btn {
+      width: 22px;
+      height: 22px;
+      padding: 3px;
+      background: rgba(138, 32, 53, 0.1);
+      border: 1px solid rgba(138, 32, 53, 0.2);
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .kml-action-btn:hover {
+      background: rgba(138, 32, 53, 0.2);
+      border-color: #8a2035;
+      transform: scale(1.1);
+    }
+    
+    .kml-action-btn svg {
+      width: 12px;
+      height: 12px;
+    }
+    
+    .kml-action-btn.visibility-btn.hidden svg {
+      opacity: 0.4;
+    }
+    
+    .kml-empty-state {
+      text-align: center;
+      padding: 18px 10px;
+      color: #999;
+      font-size: 10px;
+      font-style: italic;
+      background: white;
+      border-radius: 5px;
+      border: 2px dashed rgba(138, 32, 53, 0.2);
+    }
+    
+    /* Lista de objetos dentro de un archivo KML */
+    .kml-features-list {
+      display: none;
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px solid rgba(138, 32, 53, 0.1);
+      max-height: 100px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    
+    .kml-features-list.expanded {
+      display: block;
+    }
+    
+    .kml-feature-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px 5px;
+      background: rgba(138, 32, 53, 0.03);
+      border-radius: 3px;
+      margin-bottom: 3px;
+      font-size: 9px;
+      transition: all 0.2s;
+    }
+    
+    .kml-feature-item:hover {
+      background: rgba(138, 32, 53, 0.08);
+      transform: translateX(2px);
+    }
+    
+    .kml-feature-name {
+      flex: 1;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-right: 5px;
+    }
+    
+    .kml-feature-zoom-btn {
+      width: 18px;
+      height: 18px;
+      padding: 2px;
+      background: rgba(138, 32, 53, 0.1);
+      border: 1px solid rgba(138, 32, 53, 0.2);
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .kml-feature-zoom-btn:hover {
+      background: rgba(138, 32, 53, 0.2);
+      transform: scale(1.15);
+    }
+    
+    .kml-feature-zoom-btn svg {
+      width: 10px;
+      height: 10px;
+    }
+    
+    .kml-expand-btn {
+      width: 22px;
+      height: 22px;
+      padding: 3px;
+      background: rgba(185, 144, 86, 0.15);
+      border: 1px solid rgba(185, 144, 86, 0.3);
+      border-radius: 3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .kml-expand-btn:hover {
+      background: rgba(185, 144, 86, 0.25);
+      border-color: #b99056;
+    }
+    
+    .kml-expand-btn svg {
+      width: 12px;
+      height: 12px;
+      transition: transform 0.2s;
+    }
+    
+    .kml-expand-btn.expanded svg {
+      transform: rotate(180deg);
+    }
+    
+    /* Scrollbar personalizada dorada para la lista de KML */
+    #kml-layers-list-sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    #kml-layers-list-sidebar::-webkit-scrollbar-track {
+      background: rgba(185, 144, 86, 0.1);
+      border-radius: 3px;
+    }
+    
+    #kml-layers-list-sidebar::-webkit-scrollbar-thumb {
+      background: linear-gradient(135deg, #b99056 0%, #d4a871 100%);
+      border-radius: 3px;
+      box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
+    }
+    
+    #kml-layers-list-sidebar::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(135deg, #d4a871 0%, #e6c18a 100%);
+      box-shadow: inset 0 1px 3px rgba(255, 255, 255, 0.4);
+    }
+    
+    /* Scrollbar para la lista de features dentro de cada archivo */
+    .kml-features-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    .kml-features-list::-webkit-scrollbar-track {
+      background: rgba(185, 144, 86, 0.08);
+      border-radius: 2px;
+    }
+    
+    .kml-features-list::-webkit-scrollbar-thumb {
+      background: #b99056;
+      border-radius: 2px;
+    }
+    
+    .kml-features-list::-webkit-scrollbar-thumb:hover {
+      background: #d4a871;
     }
