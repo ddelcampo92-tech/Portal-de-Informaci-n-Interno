@@ -8,7 +8,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-    padding: 0 170px;
+      padding: 0 170px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
       border-bottom: 5px solid #8a2035;
       position: relative;
@@ -18,7 +18,7 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-        text-align: center;
+      text-align: center;
     }
     
     #header h1 {
