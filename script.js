@@ -788,6 +788,74 @@ map.on('click', function(e) {
       L.DomEvent.stopPropagation(e.originalEvent);
     }
     
+    // Si ya hay al menos 3 puntos, verificar si el clic está cerca del primer punto
+    if (areaPoints.length >= 3) {
+      const firstPoint = areaPoints[0];
+      const distance = e.latlng.distanceTo(firstPoint);
+      const tolerancePixels = 15; // Tolerancia en píxeles
+      const tolerance = tolerancePixels * 40075000 / (256 * Math.pow(2, map.getZoom())); // Convertir píxeles a metros según el zoom
+      
+      if (distance < tolerance) {
+        // Cerrar el polígono - copiar la lógica del clic derecho
+        map.closePopup();
+        
+        // Remover el polígono temporal
+        if (currentAreaPolygon) {
+          measureLayer.removeLayer(currentAreaPolygon);
+        }
+        
+        // Crear el polígono cerrado
+        currentAreaPolygon = L.polygon(areaPoints, {
+          color: '#8a2035',
+          fillColor: '#b99056',
+          weight: 3,
+          opacity: 0.8,
+          fillOpacity: 0.25
+        }).addTo(measureLayer);
+        
+        // Calcular área
+        let areaM2;
+        try {
+          areaM2 = L.GeometryUtil && L.GeometryUtil.geodesicArea 
+            ? L.GeometryUtil.geodesicArea(areaPoints)
+            : calcularAreaGeodesica(areaPoints);
+        } catch (error) {
+          areaM2 = calcularAreaGeodesica(areaPoints);
+        }
+        
+        const areaKm2 = (areaM2 / 1000000).toFixed(4);
+        const areaHa = (areaM2 / 10000).toFixed(2);
+        
+        // Calcular perímetro
+        let perimeter = 0;
+        for (let i = 0; i < areaPoints.length; i++) {
+          const nextIndex = (i + 1) % areaPoints.length;
+          perimeter += areaPoints[i].distanceTo(areaPoints[nextIndex]);
+        }
+        const perimeterKm = (perimeter / 1000).toFixed(3);
+        
+        // Crear y mostrar el popup
+        const popupContent = `
+          <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 8px; font-size: 11px;">
+            <div style="line-height: 1.5;">
+              <strong style="color: #8a2035; font-size: 11px;">Área:</strong><br>
+              <span style="margin-left: 8px; font-size: 10px;">• ${areaKm2} km²</span><br>
+              <span style="margin-left: 8px; font-size: 10px;">• ${areaHa} ha</span><br>
+              <strong style="color: #8a2035; margin-top: 5px; display: inline-block; font-size: 11px;">Perímetro:</strong><br>
+              <span style="margin-left: 8px; font-size: 10px;">• ${perimeterKm} km</span>
+            </div>
+          </div>
+        `;
+        
+        currentAreaPolygon.bindPopup(popupContent, {
+          maxWidth: 200,
+          className: 'measurement-popup'
+        }).openPopup();
+        
+        return; // No propagar el evento
+      }
+    }
+    
     areaPoints.push(e.latlng);
     
     L.circleMarker(e.latlng, {
