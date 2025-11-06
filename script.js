@@ -28,12 +28,14 @@ const nombresCapas = {
   'tanques': 'Tanques',
   // Contexto Geográfico
   'cuerpos de agua': 'Cuerpos de Agua',
+  'curvas de nivel': 'Curvas de Nivel',
   'estadomex': 'Límite Estatal',
   'estadomex_geojson': 'Límite Estatal (GeoJSON)',
   'municipios': 'Municipios',
   'municipios_geojson': 'Municipios (GeoJSON)',
   'regiones': 'Regionalización',
   'regiones_geojson': 'Regionalización (GeoJSON)',
+  'riesgo de inundacion': 'Riesgo de Inundación',
   'rios y arroyos': 'Ríos y Arroyos'
 };
 
@@ -1191,12 +1193,14 @@ async function conectar() {
       'tanques',
       // Contexto Geográfico
       'cuerpos de agua',
+      'curvas de nivel',
       'estadomex',
       'estadomex_geojson',
       'municipios',
       'municipios_geojson',
       'regiones',
       'regiones_geojson',
+      'riesgo de inundacion',
       'rios y arroyos'
       // Agrega aquí más tablas según las vayas creando en Supabase
     ];
@@ -1253,6 +1257,10 @@ async function conectar() {
           if (tbl.includes('atlas temporada')) {
             // Azul fuerte para todas las capas de inundaciones
             color = '#0066CC'; // Azul fuerte que resalta
+          } else if (tbl === 'riesgo de inundacion') {
+            color = '#1E88E5'; // Azul medio para riesgo de inundacion (será categorizado)
+          } else if (tbl === 'curvas de nivel') {
+            color = '#795548'; // Café para curvas de nivel
           } else if (tbl.includes('cuerpos') || (tbl.includes('agua') && !tbl.includes('atlas'))) {
             color = '#0077be'; // Azul para cuerpos de agua
           } else if (tbl.includes('rios') || tbl.includes('arroyos')) {
@@ -1386,6 +1394,8 @@ function mostrarCapas() {
   const ordenContextoGeografico = [
     'rios y arroyos',
     'cuerpos de agua',
+    'curvas de nivel',
+    'riesgo de inundacion',
     'municipios',
     'regiones',
     'regiones_geojson',
@@ -2337,6 +2347,83 @@ async function cargarCapa(nombre) {
       
       // Guardar las etiquetas asociadas a esta capa
       geoJsonLayer.labels = layerLabels;
+    }
+    else if (nombre === 'riesgo de inundacion') {
+      // Categorización para Riesgo de Inundación por campo "vulner_ri"
+      // Gama de tonos azules: ALTA = azul más fuerte
+      const colorMapRiesgo = {
+        'ALTA': '#08306bff',      // Azul muy oscuro/fuerte
+        'MEDIA': '#2979b9ff',     // Azul medio
+        'BAJA': '#73b2d8ff',      // Azul claro
+        'MUY BAJA': '#c8dcf0ff'   // Azul muy claro
+      };
+      
+      const geoJsonLayer = L.geoJSON(null, {
+        pointToLayer: (feature, latlng) => {
+          const vulner = (feature.properties.vulner_ri || 'SIN DATOS').toUpperCase();
+          const color = colorMapRiesgo[vulner] || '#1E88E5';
+          return L.circleMarker(latlng, {
+            radius: 7,
+            fillColor: color,
+            color: '#ffffff',
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 1
+          });
+        },
+        style: (feature) => {
+          const vulner = (feature.properties.vulner_ri || 'SIN DATOS').toUpperCase();
+          const color = colorMapRiesgo[vulner] || '#1E88E5';
+          return {
+            color: color,
+            weight: 2,
+            opacity: 0.8,
+            fillOpacity: 1
+          };
+        },
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties;
+          let popup = '<b>Riesgo de Inundación</b><br>';
+          popup += `<b>Vulnerabilidad:</b> ${props.vulner_ri || 'Sin Datos'}<br>`;
+          Object.keys(props).forEach(key => {
+            if (key !== 'geom' && key !== 'vulner_ri') {
+              popup += `${key}: ${props[key]}<br>`;
+            }
+          });
+          layer.bindPopup(popup);
+        }
+      });
+      
+      data.forEach(row => {
+        const geomField = config.columna_geom || 'geom';
+        if (row[geomField]) {
+          let geometry = typeof row[geomField] === 'string' ? JSON.parse(row[geomField]) : row[geomField];
+          
+          if (geometry.coordinates) {
+            geometry = reprojectGeometry(geometry);
+            
+            if (isValidGeometry(geometry)) {
+              geoJsonLayer.addData({
+                type: 'Feature',
+                properties: row,
+                geometry: geometry
+              });
+            } else {
+              console.warn(`Geometría inválida encontrada en ${nombre}`);
+            }
+          }
+        }
+      });
+      
+      const featureCount = geoJsonLayer.getLayers().length;
+      console.log(`✅ ${nombre}: ${featureCount} features válidas de ${data.length} registros`);
+      
+      if (featureCount === 0) {
+        throw new Error('No se encontraron geometrías válidas en la capa');
+      }
+
+      geoJsonLayer.addTo(map);
+      capasActivas[nombre] = geoJsonLayer;
     }
     else {
       const geoJsonLayer = L.geoJSON(null, {
