@@ -67,7 +67,7 @@
       font-weight: 700;
       line-height: 1.2;
       color: #8a2035;
-      text-shadow: 1px 1px 2px rgba(255,255,255,0.6);
+      text-shadow: 1px 1px 2px rgba(255,255,255,1);
     }
     
     #header h2 {
@@ -75,13 +75,13 @@
       font-weight: 500;
       line-height: 1.2;
       color: #b99056;
-      text-shadow: 1px 1px 2px rgba(255,255,255,0.8);
+      text-shadow: 1px 1px 2px rgba(255,255,255,3);
     }
     
     #header h3 {
       font-size: 19px;
       font-weight: 600;
-      line-height: 1.2;
+      line-height: 1;
       color: #b99056;
       text-shadow: 1px 1px 3px rgba(255,255,255,0.8);
       margin-top: 2px;
@@ -619,71 +619,113 @@
     }
     
     /* Botón flotante de simbología */
-    #symbology-container {
+    /* ========== VENTANA MODAL MOVIBLE DE SIMBOLOGÍA ========== */
+    .symbology-modal {
       position: fixed;
-      top: 240px;
-      left: 350px;
-      z-index: 1000;
-      transition: left 0.3s ease;
+      top: 120px;
+      right: 20px;
+      width: 320px;
+      max-height: 550px;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      border: 3px solid #8a2035;
+      z-index: 2000;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
     }
     
-    #symbology-container.sidebar-hidden {
-      left: 10px;
+    .symbology-modal.show {
+      display: flex;
+      animation: fadeInScale 0.3s ease;
     }
     
-    #symbology-btn {
-      width: 50px;
-      height: 50px;
-      background: #8a2035;
-      border: 2px solid #8a2035;
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    .symbology-modal-header {
+      background: linear-gradient(135deg, #8a2035 0%, #721a2d 100%);
+      padding: 15px 20px;
+      cursor: move;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #b99056;
+    }
+    
+    .symbology-modal-header h4 {
+      margin: 0;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .symbology-modal-header .close-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(138, 32, 53, 0.4);
+      font-size: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.3s ease;
-      position: relative;
+      transition: all 0.2s;
+      font-weight: bold;
     }
     
-    #symbology-btn::before {
-      content: '';
-      position: absolute;
-      top: -4px;
-      left: -4px;
-      right: -4px;
-      bottom: -4px;
-      border: 3px solid #b99056;
-      border-radius: 50%;
-      opacity: 0.6;
-    }
-    
-    #symbology-btn:hover {
+    .symbology-modal-header .close-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
       transform: scale(1.1);
-      box-shadow: 0 6px 16px rgba(138, 32, 53, 0.6);
-      background: #721a2d;
     }
     
-    #symbology-btn:hover::before {
-      opacity: 1;
+    .symbology-modal-content {
+      padding: 20px;
+      overflow-y: auto;
+      max-height: 480px;
+      flex: 1;
+      background: transparent;
     }
     
-    #symbology-btn.active {
+    .symbology-modal-content::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .symbology-modal-content::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+    
+    .symbology-modal-content::-webkit-scrollbar-thumb {
       background: #b99056;
-      border-color: #b99056;
+      border-radius: 4px;
     }
     
-    #symbology-btn svg {
-      width: 24px;
-      height: 24px;
-      fill: white;
-      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+    .symbology-modal-content::-webkit-scrollbar-thumb:hover {
+      background: #8a2035;
     }
-    
+
 
     #deactivate-layers-container {
       position: fixed;
-      top: 300px;
+      top: 240px;
       left: 350px;
       z-index: 1000;
       transition: left 0.3s ease;
@@ -740,7 +782,7 @@
     /* Botón flotante de Zoom de inicio */
     #zoom-inicio-container {
       position: fixed;
-      top: 360px;
+      top: 300px;
       left: 350px;
       z-index: 1000;
       transition: left 0.3s ease;
@@ -1509,58 +1551,6 @@
 
     
     /* Estilos para el panel de simbología */
-    #symbology-panel {
-      position: absolute;
-      top: 0;
-      left: 70px;
-      width: 360px;
-      max-height: 500px;
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
-      padding: 15px;
-      display: none;
-      overflow-y: auto;
-      border: 2px solid #8a2035;
-    }
-    
-    #symbology-panel.show {
-      display: block;
-      animation: slideIn 0.3s ease;
-    }
-    
-    #symbology-panel h4 {
-      margin: 0 0 15px 0;
-      color: #8a2035;
-      font-size: 16px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-bottom: 10px;
-      border-bottom: 2px solid #b99056;
-    }
-    
-    #symbology-panel .close-btn {
-      background: rgba(138, 32, 53, 0.1);
-      border: none;
-      color: #8a2035;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-    }
-    
-    #symbology-panel .close-btn:hover {
-      background: rgba(138, 32, 53, 0.2);
-      transform: scale(1.1);
-    }
-    
     .symbology-section {
       margin-bottom: 20px;
     }
@@ -1617,7 +1607,7 @@
       font-size: 11px;
       color: #666;
       padding: 4px 8px;
-      background: white;
+      background: rgba(255, 255, 255, 0.6);
       border-radius: 3px;
       transition: all 0.2s;
     }
@@ -1633,6 +1623,7 @@
       border-radius: 2px;
       border: 1.5px solid rgba(0,0,0,0.3);
       flex-shrink: 0;
+      opacity: 0.7;
     }
     
     .symbology-symbol.line {
@@ -1641,6 +1632,7 @@
       border-radius: 2px;
       margin: 0;
       border: 1px solid rgba(0,0,0,0.3);
+      opacity: 0.7;
     }
     
     .symbology-symbol.point {
@@ -1649,6 +1641,7 @@
       border-radius: 50%;
       margin: 0;
       border: 1.5px solid rgba(0,0,0,0.3);
+      opacity: 0.8;
     }
     
     .symbology-label {
@@ -2615,4 +2608,41 @@
     
     .kml-features-list::-webkit-scrollbar-thumb:hover {
       background: #d4a871;
+    }
+
+    /* ========== ESTILOS PARA LA ESCALA GRÁFICA ========== */
+    .leaflet-control-scale {
+      background: rgba(255, 255, 255, 0.75);
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      padding: 8px 10px;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      backdrop-filter: blur(8px);
+      margin-left: 10px !important;
+      margin-bottom: 10px !important;
+    }
+    
+    .leaflet-control-scale-line {
+      border: 2px solid #8a2035;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      color: #47161D;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.4;
+      padding: 3px 8px;
+      background: linear-gradient(to bottom, 
+        rgba(138, 32, 53, 0.08) 0%, 
+        rgba(255, 255, 255, 0.95) 50%);
+      text-align: center;
+      white-space: nowrap;
+      overflow: visible;
+      box-shadow: inset 0 -1px 3px rgba(138, 32, 53, 0.1);
+    }
+    
+    .leaflet-control-scale-line:not(:first-child) {
+      border-top: 2px solid #8a2035;
+      border-bottom: none;
+      margin-top: -2px;
     }

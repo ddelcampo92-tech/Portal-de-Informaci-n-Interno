@@ -62,6 +62,14 @@ const map = L.map('map', {
 
 map.zoomControl.setPosition('topright');
 
+// Agregar escala gráfica en la parte inferior izquierda
+L.control.scale({
+  position: 'bottomleft',
+  metric: true,
+  imperial: false,
+  maxWidth: 150
+}).addTo(map);
+
 let currentBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors',
   maxZoom: 19
@@ -356,19 +364,76 @@ function closeProfile() {
   enableLayersInteractivity();
 }
 
-function toggleSymbology() {
-  const panel = document.getElementById('symbology-panel');
-  const btn = document.getElementById('symbology-btn');
+// Variables para la ventana modal de simbología
+let symbologyModalDragging = false;
+let symbologyModalCurrentX;
+let symbologyModalCurrentY;
+let symbologyModalInitialX;
+let symbologyModalInitialY;
+let symbologyModalXOffset = 0;
+let symbologyModalYOffset = 0;
+
+function openSymbologyModal() {
+  const modal = document.getElementById('symbology-modal');
+  updateSymbology();
+  modal.classList.add('show');
+}
+
+function closeSymbologyModal() {
+  const modal = document.getElementById('symbology-modal');
+  modal.classList.remove('show');
+}
+
+// Inicializar la funcionalidad de arrastre para la ventana de simbología
+function initSymbologyDrag() {
+  const modal = document.getElementById('symbology-modal');
+  const header = document.getElementById('symbology-header');
   
-  if (panel.classList.contains('show')) {
-    panel.classList.remove('show');
-    btn.classList.remove('active');
-  } else {
-    updateSymbology();
-    panel.classList.add('show');
-    btn.classList.add('active');
+  header.addEventListener('mousedown', dragStart);
+  document.addEventListener('mousemove', drag);
+  document.addEventListener('mouseup', dragEnd);
+  
+  function dragStart(e) {
+    symbologyModalInitialX = e.clientX - symbologyModalXOffset;
+    symbologyModalInitialY = e.clientY - symbologyModalYOffset;
+    
+    if (e.target === header || e.target.parentElement === header) {
+      symbologyModalDragging = true;
+      header.style.cursor = 'grabbing';
+    }
+  }
+  
+  function drag(e) {
+    if (symbologyModalDragging) {
+      e.preventDefault();
+      
+      symbologyModalCurrentX = e.clientX - symbologyModalInitialX;
+      symbologyModalCurrentY = e.clientY - symbologyModalInitialY;
+      
+      symbologyModalXOffset = symbologyModalCurrentX;
+      symbologyModalYOffset = symbologyModalCurrentY;
+      
+      setTranslate(symbologyModalCurrentX, symbologyModalCurrentY, modal);
+    }
+  }
+  
+  function dragEnd(e) {
+    symbologyModalInitialX = symbologyModalCurrentX;
+    symbologyModalInitialY = symbologyModalCurrentY;
+    
+    symbologyModalDragging = false;
+    header.style.cursor = 'move';
+  }
+  
+  function setTranslate(xPos, yPos, el) {
+    el.style.transform = `translate(${xPos}px, ${yPos}px)`;
   }
 }
+
+// Inicializar el arrastre cuando se carga la página
+window.addEventListener('DOMContentLoaded', function() {
+  initSymbologyDrag();
+});
 
 function updateSymbology() {
   const content = document.getElementById('symbology-content');
@@ -402,8 +467,22 @@ function updateSymbology() {
     'atlas temporada 2024': 'temp_lluv'
   };
   
-  // Combinar Inventario CAEM e Inundaciones para la simbología
-  const capasParaSimbologia = {...inventarioCAEM, ...inundaciones};
+  // Definir capas de Contexto Geográfico
+  const contextoGeografico = {
+    'cuerpos de agua': 'nombre',  // Mostrar por nombre
+    'curvas de nivel': 'elevacion',
+    'estadomex': 'nom_ent',  // Nombre de la entidad
+    'estadomex_geojson': 'nom_ent',
+    'municipios': 'municipi_1',  // Nombre del municipio
+    'municipios_geojson': 'municipi_1',
+    'regiones': 'municipi_1',  // Cambiar a municipi_1 según solicitud
+    'regiones_geojson': 'municipi_1',
+    'riesgo de inundacion': 'vulner_ri',
+    'rios y arroyos': 'nombre'  // Mostrar por nombre
+  };
+  
+  // Combinar todas las capas para la simbología
+  const capasParaSimbologia = {...inventarioCAEM, ...inundaciones, ...contextoGeografico};
   
   // Función auxiliar para procesar una capa y obtener su HTML
   function processLayer(layerName, fieldName) {
@@ -487,6 +566,39 @@ function updateSymbology() {
       }
     }
     
+    // Si no hay valores únicos, mostrar un símbolo genérico con el color de la capa
+    if (uniqueValues.size === 0 && totalFeatures > 0) {
+      // Obtener el color de la primera feature de la capa
+      let defaultColor = '#8a2035';
+      if (layer && layer.getLayers && layer.getLayers().length > 0) {
+        const firstLayer = layer.getLayers()[0];
+        if (firstLayer.options && firstLayer.options.fillColor) {
+          defaultColor = firstLayer.options.fillColor;
+        } else if (firstLayer.options && firstLayer.options.color) {
+          defaultColor = firstLayer.options.color;
+        }
+      }
+      
+      html += `<div class="symbology-item">`;
+      
+      if (geometryType === 'line') {
+        html += `<div class="symbology-symbol line" style="background-color: ${defaultColor};"></div>`;
+      } else if (geometryType === 'polygon') {
+        html += `<div class="symbology-symbol" style="background-color: ${defaultColor}; opacity: 0.6;"></div>`;
+      } else {
+        html += `<div class="symbology-symbol point" style="background-color: ${defaultColor};"></div>`;
+      }
+      
+      html += `<div class="symbology-label">`;
+      html += `<div class="symbology-value">${displayName}</div>`;
+      html += `<div class="symbology-count">(${totalFeatures})</div>`;
+      html += `</div>`;
+      html += `</div>`;
+      
+      html += `</div>`;
+      return html;
+    }
+    
     // Ordenar valores alfabéticamente
     const sortedValues = Array.from(uniqueValues.entries()).sort((a, b) => 
       String(a[0]).localeCompare(String(b[0]))
@@ -530,9 +642,10 @@ function updateSymbology() {
   
   let html = '';
   
-  // Crear secciones separadas para Inventario CAEM e Inundaciones
+  // Crear secciones separadas para Inventario CAEM, Inundaciones y Contexto Geográfico
   const inventarioActiveLayers = activeInventoryLayers.filter(name => inventarioCAEM[name]);
   const inundacionesActiveLayers = activeInventoryLayers.filter(name => inundaciones[name]);
+  const contextoActiveLayers = activeInventoryLayers.filter(name => contextoGeografico[name]);
   
   // Sección Inventario CAEM
   if (inventarioActiveLayers.length > 0) {
@@ -562,6 +675,23 @@ function updateSymbology() {
     html += `<div class="symbology-section-title">Inundaciones <span class="symbology-section-count">(${totalInundaciones})</span></div>`;
     
     inundacionesActiveLayers.forEach(layerName => {
+      html += processLayer(layerName, capasParaSimbologia[layerName]);
+    });
+    
+    html += `</div>`;
+  }
+  
+  // Sección Contexto Geográfico
+  if (contextoActiveLayers.length > 0) {
+    const totalContexto = contextoActiveLayers.reduce((sum, layerName) => {
+      const layer = capasActivas[layerName];
+      return sum + (layer && layer.getLayers ? layer.getLayers().length : 0);
+    }, 0);
+    
+    html += `<div class="symbology-section">`;
+    html += `<div class="symbology-section-title">Contexto Geográfico <span class="symbology-section-count">(${totalContexto})</span></div>`;
+    
+    contextoActiveLayers.forEach(layerName => {
       html += processLayer(layerName, capasParaSimbologia[layerName]);
     });
     
@@ -811,7 +941,7 @@ map.on('click', function(e) {
           color: '#8a2035',
           fillColor: '#b99056',
           weight: 3,
-          opacity: 0.8,
+          opacity: 1,
           fillOpacity: 0.25
         }).addTo(measureLayer);
         
@@ -909,7 +1039,7 @@ map.on('contextmenu', function(e) {
       color: '#8a2035',
       fillColor: '#b99056',
       weight: 3,
-      opacity: 0.8,
+      opacity: 1,
       fillOpacity: 0.25
     }).addTo(measureLayer);
     
@@ -1046,7 +1176,7 @@ function drawElevationChart(distances, elevations) {
   canvas.width = canvas.offsetWidth;
   canvas.height = canvas.offsetHeight;
   
-  const padding = { top: 30, right: 30, bottom: 55, left: 70 };
+  const padding = { top: 45, right: 30, bottom: 55, left: 70 };
   const width = canvas.width - padding.left - padding.right;
   const height = canvas.height - padding.top - padding.bottom;
   
@@ -1057,10 +1187,15 @@ function drawElevationChart(distances, elevations) {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   
-  // Encontrar valores mínimos y máximos
+  // Encontrar valores mínimos y máximos con margen adicional
   const minElev = Math.min(...elevations);
   const maxElev = Math.max(...elevations);
   const elevRange = maxElev - minElev;
+  // Agregar 10% de margen arriba y abajo para dar espacio
+  const elevMargin = elevRange * 0.1;
+  const displayMinElev = minElev - elevMargin;
+  const displayMaxElev = maxElev + elevMargin;
+  const displayRange = displayMaxElev - displayMinElev;
   const maxDist = Math.max(...distances);
   
   // Dibujar líneas de cuadrícula y etiquetas del eje Y (elevación)
@@ -1072,7 +1207,7 @@ function drawElevationChart(distances, elevations) {
   const numYTicks = 5;
   for (let i = 0; i <= numYTicks; i++) {
     const y = padding.top + (height * i) / numYTicks;
-    const elev = maxElev - (elevRange * i) / numYTicks;
+    const elev = displayMaxElev - (displayRange * i) / numYTicks;
     
     ctx.beginPath();
     ctx.moveTo(padding.left, y);
@@ -1114,22 +1249,47 @@ function drawElevationChart(distances, elevations) {
   ctx.fillText('Elevación (m)', 0, 0);
   ctx.restore();
   
-  // Dibujar barras verticales más delgadas
-  const numBars = Math.min(elevations.length, 150); // Limitar número de barras
-  const barWidth = width / numBars;
-  const step = Math.max(1, Math.floor(elevations.length / numBars));
+  // Dibujar área de relleno bajo la línea
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top + height);
   
-  for (let i = 0; i < elevations.length; i += step) {
-    const barIndex = Math.floor(i / step);
-    const x = padding.left + (barIndex / numBars) * width;
-    const normalizedElev = (elevations[i] - minElev) / elevRange;
-    const barHeight = normalizedElev * height;
-    const y = padding.top + height - barHeight;
+  for (let i = 0; i < elevations.length; i++) {
+    const x = padding.left + (distances[i] / maxDist) * width;
+    const normalizedElev = (elevations[i] - displayMinElev) / displayRange;
+    const y = padding.top + height - (normalizedElev * height);
     
-    // Color uniforme en tono institucional
-    ctx.fillStyle = '#8a2035';
-    ctx.fillRect(x, y, Math.max(1, barWidth - 0.5), barHeight);
+    if (i === 0) {
+      ctx.lineTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
   }
+  
+  ctx.lineTo(padding.left + width, padding.top + height);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(138, 32, 53, 0.15)';
+  ctx.fill();
+  
+  // Dibujar línea de perfil suave
+  ctx.beginPath();
+  ctx.strokeStyle = '#8a2035';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  
+  for (let i = 0; i < elevations.length; i++) {
+    const x = padding.left + (distances[i] / maxDist) * width;
+    const normalizedElev = (elevations[i] - displayMinElev) / displayRange;
+    const y = padding.top + height - (normalizedElev * height);
+    
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  }
+  
+  ctx.stroke();
   
   // Marco del gráfico
   ctx.strokeStyle = '#47161D';
@@ -1554,27 +1714,65 @@ async function toggleCapa(nombre, activar) {
     await cargarCapa(nombre);
     ultimaCapaActivada = nombre; // Rastrear la última capa activada
     console.log(`🎯 Última capa activada: ${nombre}`);
+    
+    // Abrir automáticamente la ventana de simbología
+    openSymbologyModal();
   } else {
     if (capasActivas[nombre]) {
-      // Si es la capa de regiones, eliminar las etiquetas
-      if ((nombre === 'regiones' || nombre === 'regiones_geojson') && capasActivas[nombre].labels) {
-        capasActivas[nombre].labels.forEach(label => {
-          map.removeLayer(label);
-        });
+      // Si es la capa de regiones, eliminar las etiquetas PRIMERO
+      if ((nombre === 'regiones' || nombre === 'regiones_geojson')) {
+        if (capasActivas[nombre].labels && Array.isArray(capasActivas[nombre].labels)) {
+          console.log(`🏷️ Eliminando ${capasActivas[nombre].labels.length} etiquetas de ${nombre}`);
+          capasActivas[nombre].labels.forEach(label => {
+            if (map.hasLayer(label)) {
+              map.removeLayer(label);
+            }
+          });
+          // Limpiar el array de etiquetas
+          capasActivas[nombre].labels = [];
+        }
       }
       
-      map.removeLayer(capasActivas[nombre]);
+      // Luego remover la capa del mapa
+      if (map.hasLayer(capasActivas[nombre])) {
+        map.removeLayer(capasActivas[nombre]);
+      }
+      
       delete capasActivas[nombre];
+      
       // Si se desactiva la última capa activada, actualizar a null o a otra capa activa
       if (ultimaCapaActivada === nombre) {
         const capasActivasArray = Object.keys(capasActivas);
         ultimaCapaActivada = capasActivasArray.length > 0 ? capasActivasArray[capasActivasArray.length - 1] : null;
       }
     }
-  }
-  // Actualizar la simbología si el panel está abierto
-  if (document.getElementById('symbology-panel').classList.contains('show')) {
-    updateSymbology();
+    
+    // Actualizar la simbología si la ventana está abierta
+    const modal = document.getElementById('symbology-modal');
+    if (modal.classList.contains('show')) {
+      updateSymbology();
+      
+      // Si no quedan capas activas para mostrar en simbología, cerrar la ventana
+      const capasParaSimbologia = [
+        'cajas de captacion', 'cajas derivadoras', 'cajas rompedoras de presion',
+        'campamentos_edomex', 'carcamos', 'fosas septicas', 'galeria filtrante',
+        'lineas de conduccion-ap', 'lineasdistribucion-drenaje', 'manantiales',
+        'obras de toma', 'plantas de bombeo', 'plantas de tratamiento', 'pozos', 'tanques',
+        'atlas temporada 2020', 'atlas temporada 2021', 'atlas temporada 2022',
+        'atlas temporada 2023', 'atlas temporada 2024',
+        'cuerpos de agua', 'curvas de nivel', 'estadomex', 'estadomex_geojson',
+        'municipios', 'municipios_geojson', 'regiones', 'regiones_geojson',
+        'riesgo de inundacion', 'rios y arroyos'
+      ];
+      
+      const hasSymbologyLayers = Object.keys(capasActivas).some(name => 
+        capasParaSimbologia.includes(name)
+      );
+      
+      if (!hasSymbologyLayers) {
+        closeSymbologyModal();
+      }
+    }
   }
 }
 
@@ -1747,7 +1945,7 @@ async function cargarCapa(nombre) {
             color: '#ffffff',
             weight: 2,
             opacity: 1,
-            fillOpacity: 0.85
+            fillOpacity: 1
           });
         },
         onEachFeature: (feature, layer) => {
@@ -1821,16 +2019,17 @@ async function cargarCapa(nombre) {
             color: '#ffffff',
             weight: 2,
             opacity: 1,
-            fillOpacity: 0.85
+            fillOpacity: 1
           });
         },
         style: (feature) => {
           const proyecto = feature.properties.PROYECTO || feature.properties.proyecto || 'Sin Proyecto';
           return {
-            color: colorMap[proyecto] || '#999999',
+            color: '#ffffff',
             weight: 2,
-            opacity: 0.8,
-            fillOpacity: 0.5
+            opacity: 1,
+            fillColor: colorMap[proyecto] || '#999999',
+            fillOpacity: 1
           };
         },
         onEachFeature: (feature, layer) => {
@@ -1896,7 +2095,7 @@ async function cargarCapa(nombre) {
             color: '#ffffff',
             weight: 2,
             opacity: 1,
-            fillOpacity: 0.85
+            fillOpacity: 1
           });
         },
         onEachFeature: (feature, layer) => {
@@ -1966,7 +2165,7 @@ async function cargarCapa(nombre) {
             color: '#ffffff',
             weight: 2,
             opacity: 1,
-            fillOpacity: 0.85
+            fillOpacity: 1
           });
         },
         style: (feature) => {
@@ -1974,8 +2173,8 @@ async function cargarCapa(nombre) {
           return {
             color: colorMap[proyecto] || '#999999',
             weight: 1.5,  // Línea más delgada
-            opacity: 0.8,
-            fillOpacity: 0.3
+            opacity: 1,
+            fillOpacity: 1
           };
         },
         onEachFeature: (feature, layer) => {
@@ -2045,7 +2244,7 @@ async function cargarCapa(nombre) {
             color: '#ffffff',
             weight: 2,
             opacity: 1,
-            fillOpacity: 0.85
+            fillOpacity: 1
           });
         },
         style: (feature) => {
@@ -2053,8 +2252,8 @@ async function cargarCapa(nombre) {
           return {
             color: colorMap[proyecto] || '#999999',
             weight: 2,
-            opacity: 0.8,
-            fillOpacity: 0.4
+            opacity: 1,
+            fillOpacity: 1
           };
         },
         onEachFeature: (feature, layer) => {
@@ -2122,7 +2321,7 @@ async function cargarCapa(nombre) {
             color: '#ffffff',
             weight: 2,
             opacity: 1,
-            fillOpacity: 0.85
+            fillOpacity: 1
           });
         },
         style: (feature) => {
@@ -2130,8 +2329,8 @@ async function cargarCapa(nombre) {
           return {
             color: colorMap[proyecto] || '#999999',
             weight: 1.5,
-            opacity: 0.8,
-            fillOpacity: 0.3
+            opacity: 1,
+            fillOpacity: 1
           };
         },
         onEachFeature: (feature, layer) => {
@@ -2249,9 +2448,9 @@ async function cargarCapa(nombre) {
           return {
             color: colorMap[municipio] || '#999999',
             weight: 2,
-            opacity: 0.8,
+            opacity: 1,
             fillColor: colorMap[municipio] || '#999999',
-            fillOpacity: 0.5
+            fillOpacity: 1
           };
         },
         onEachFeature: (feature, layer) => {
@@ -2375,9 +2574,10 @@ async function cargarCapa(nombre) {
           const vulner = (feature.properties.vulner_ri || 'SIN DATOS').toUpperCase();
           const color = colorMapRiesgo[vulner] || '#1E88E5';
           return {
-            color: color,
-            weight: 2,
-            opacity: 0.8,
+            color: '#ffffff',
+            weight: 1,
+            opacity: 1,
+            fillColor: color,
             fillOpacity: 1
           };
         },
@@ -2434,14 +2634,15 @@ async function cargarCapa(nombre) {
             color: '#ffffff',
             weight: 2,
             opacity: 1,
-            fillOpacity: 0.85
+            fillOpacity: 1
           });
         },
         style: () => ({
-          color: config.color,
+          color: '#ffffff',
           weight: 2,
-          opacity: 0.8,
-          fillOpacity: 0.4
+          opacity: 1,
+          fillColor: config.color,
+          fillOpacity: 1
         }),
         onEachFeature: (feature, layer) => {
           const props = feature.properties;
@@ -2937,9 +3138,9 @@ function loadKmlFromText(kmlText, fileName) {
           layer.setStyle({
             color: '#8a2035',
             weight: 3,
-            opacity: 0.8,
+            opacity: 1,
             fillColor: '#b99056',
-            fillOpacity: 0.3
+            fillOpacity: 1
           });
         }
         
