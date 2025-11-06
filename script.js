@@ -2900,7 +2900,6 @@ function toggleSidebar() {
   const toggleContainer = document.getElementById('toggle-sidebar-container');
   const toggleBtn = document.getElementById('toggle-sidebar-btn');
   const searchContainer = document.getElementById('search-places-container');
-  const symbologyContainer = document.getElementById('symbology-container');
   const deactivateContainer = document.getElementById('deactivate-layers-container');
   const zoomInicioContainer = document.getElementById('zoom-inicio-container');
   const toolsContainer = document.getElementById('tools-container');
@@ -2910,16 +2909,28 @@ function toggleSidebar() {
   mapElement.classList.toggle('expanded');
   toggleContainer.classList.toggle('sidebar-hidden');
   toggleBtn.classList.toggle('sidebar-hidden');
-  searchContainer.classList.toggle('sidebar-hidden');
-  symbologyContainer.classList.toggle('sidebar-hidden');
-  deactivateContainer.classList.toggle('sidebar-hidden');
-  zoomInicioContainer.classList.toggle('sidebar-hidden');
-  toolsContainer.classList.toggle('sidebar-hidden');
   
-  // Invalidar el tamaño del mapa después de la transición para que se ajuste correctamente
+  // Aplicar toggle solo si los elementos existen
+  if (searchContainer) searchContainer.classList.toggle('sidebar-hidden');
+  if (deactivateContainer) deactivateContainer.classList.toggle('sidebar-hidden');
+  if (zoomInicioContainer) zoomInicioContainer.classList.toggle('sidebar-hidden');
+  if (toolsContainer) toolsContainer.classList.toggle('sidebar-hidden');
+  
+  // Invalidar el tamaño del mapa inmediatamente y después de la transición
+  // Esto asegura que el mapa se redibuje correctamente en toda el área expandida
   setTimeout(() => {
-    map.invalidateSize();
-  }, 300);
+    map.invalidateSize({
+      animate: true,
+      pan: false
+    });
+  }, 50);
+  
+  setTimeout(() => {
+    map.invalidateSize({
+      animate: true,
+      pan: false
+    });
+  }, 350);
 }
 
 // Función para hacer zoom al estado inicial
