@@ -63,7 +63,7 @@
           </span>
           <span class="label">Perfil de<br>Elevación</span>
         </button>
-        <button class="tool-btn" id="search-btn" onclick="toggleSearch()">
+        <button class="tool-btn" id="search-btn" onclick="toggleSearchSidebar()">
           <span class="icon">
             <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
               <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
@@ -92,13 +92,15 @@
         </button>
       </div>
       <div id="coord-search-inputs" style="display: none; margin-top: 10px;">
-        <div class="coord-inputs">
-          <input type="number" class="coord-input" id="search-lat" placeholder="Latitud" step="0.0001" />
-          <input type="number" class="coord-input" id="search-lon" placeholder="Longitud" step="0.0001" />
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; gap: 8px;">
+            <input type="number" class="coord-input" id="search-lat" placeholder="Latitud" step="0.0001" style="flex: 1;" />
+            <input type="number" class="coord-input" id="search-lon" placeholder="Longitud" step="0.0001" style="flex: 1;" />
+          </div>
+          <button class="tool-btn" style="width: 100%; aspect-ratio: auto; height: auto; padding: 10px;" onclick="buscarCoordenadasSidebar()">
+            <span class="label" style="font-size: 12px;">Ir a ubicación</span>
+          </button>
         </div>
-        <button class="tool-btn" style="width: 100%; aspect-ratio: auto; margin-top: 5px; height: auto; padding: 10px;" onclick="buscarCoordenadas()">
-          <span class="label" style="font-size: 12px;">Ir a ubicación</span>
-        </button>
       </div>
     </div>
     
@@ -163,43 +165,14 @@
     </button>
   </div>
   
-  <!-- Botón flotante de búsqueda de lugares -->
-  <div id="search-places-container">
-    <button id="search-places-btn" onclick="toggleSearchPlaces()">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="10" cy="10" r="6" stroke="white" stroke-width="2" fill="none"/>
-        <line x1="14.5" y1="14.5" x2="20" y2="20" stroke="white" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="10" cy="10" r="3" fill="white" opacity="0.3"/>
+  <!-- Botón flotante de Zoom de inicio -->
+  <div id="zoom-inicio-container">
+    <button id="zoom-inicio-btn" onclick="zoomInicio()" title="Zoom al Estado de México">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white">
+        <!-- Casa -->
+        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
       </svg>
     </button>
-    <div id="search-places-panel">
-      <h4>
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 18px; height: 18px; fill: currentColor;">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
-        Buscar Lugares
-      </h4>
-      <input 
-        type="text" 
-        id="search-places-input" 
-        placeholder="Buscar localidad, municipio, calle..."
-        oninput="searchPlaces(event)"
-      />
-      <div id="search-places-loading">
-        <svg style="width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block;" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="10" stroke="#8a2035" stroke-width="3" fill="none" opacity="0.25"/>
-          <path d="M12 2 A10 10 0 0 1 22 12" stroke="#8a2035" stroke-width="3" fill="none" stroke-linecap="round"/>
-        </svg>
-        <style>
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        </style>
-        <p>Buscando...</p>
-      </div>
-      <div id="search-places-results"></div>
-    </div>
   </div>
   
   <!-- Ventana emergente movible de simbología -->
@@ -214,157 +187,24 @@
   </div>
   
   <!-- Botón flotante de desactivar capas -->
-  <div id="deactivate-layers-container">
-    <button id="deactivate-layers-btn" onclick="apagarTodasLasCapas()" title="Desactivar todas las capas visibles">
-      <!-- OPCIÓN 1: Ojo tachado -->
-      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-        <!-- Ojo -->
-        <ellipse cx="32" cy="32" rx="28" ry="16" fill="none" stroke="white" stroke-width="2.5"/>
-        <circle cx="32" cy="32" r="8" fill="white"/>
-        <circle cx="32" cy="32" r="5" fill="white" opacity="0.6"/>
-        <!-- Línea diagonal (tachado) -->
-        <line x1="8" y1="8" x2="56" y2="56" stroke="white" stroke-width="3.5" stroke-linecap="round"/>
-        <line x1="8" y1="8" x2="56" y2="56" stroke="#8a2035" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </button>
-  </div>
 
-  <!-- Botón flotante de Zoom de inicio -->
-  <div id="zoom-inicio-container">
-    <button id="zoom-inicio-btn" onclick="zoomInicio()" title="Zoom de inicio">
-      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-        <!-- Casa con toque dorado -->
-        <!-- Techo -->
-        <path d="M32 8 L54 26 L50 26 L50 54 L38 54 L38 40 L26 40 L26 54 L14 54 L14 26 L10 26 Z" 
-              fill="white" stroke="white" stroke-width="2" stroke-linejoin="round"/>
-        <!-- Detalles dorados -->
-        <path d="M32 8 L54 26 L50 26 L32 12 L14 26 L10 26 Z" 
-              fill="#b99056" opacity="0.9"/>
-        <!-- Puerta -->
-        <rect x="28" y="42" width="8" height="12" rx="1" fill="#b99056"/>
-        <!-- Ventana -->
-        <rect x="20" y="30" width="6" height="6" rx="1" fill="#b99056" opacity="0.8"/>
-        <rect x="38" y="30" width="6" height="6" rx="1" fill="#b99056" opacity="0.8"/>
-        <!-- Chimenea -->
-        <rect x="42" y="16" width="4" height="8" fill="#b99056" opacity="0.7"/>
-      </svg>
-    </button>
-  </div>
-
-  <!-- Botón flotante de herramientas -->
-  <div id="tools-container">
-    <button id="tools-btn" onclick="toggleToolsPanel()">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white">
-        <!-- Engranaje/Settings -->
-        <path d="M12,8c-2.21,0-4,1.79-4,4s1.79,4,4,4s4-1.79,4-4S14.21,8,12,8z M19.43,12.5c0.04-0.32,0.07-0.64,0.07-0.96 c0-0.33-0.03-0.66-0.07-0.98l2.11-1.65c0.19-0.15,0.24-0.42,0.12-0.64l-2-3.46c-0.12-0.22-0.39-0.3-0.61-0.22l-2.49,1 c-0.52-0.4-1.08-0.73-1.69-0.98l-0.38-2.65C14.46,2.18,14.25,2,14,2h-4C9.75,2,9.54,2.18,9.51,2.42L9.13,5.07 C8.52,5.32,7.96,5.66,7.44,6.05l-2.49-1C4.73,4.96,4.46,5.04,4.34,5.27l-2,3.46C2.21,8.95,2.27,9.22,2.46,9.37l2.11,1.65 C4.53,11.34,4.5,11.67,4.5,12s0.03,0.66,0.07,0.98l-2.11,1.65c-0.19,0.15-0.24,0.42-0.12,0.64l2,3.46 c0.12,0.22,0.39,0.3,0.61,0.22l2.49-1c0.52,0.4,1.08,0.73,1.69,0.98l0.38,2.65C9.54,21.82,9.75,22,10,22h4 c0.25,0,0.46-0.18,0.49-0.42l0.38-2.65c0.61-0.25,1.17-0.59,1.69-0.98l2.49,1c0.23,0.09,0.49,0,0.61-0.22l2-3.46 c0.12-0.22,0.07-0.49-0.12-0.64L19.43,12.5z"/>
-      </svg>
-    </button>
-    <div id="tools-panel">
-      <h4>
-        Herramientas
-        <button class="close-btn" onclick="toggleToolsPanel()">×</button>
-      </h4>
-      <div class="tools-list-float">
-        <!-- Medir Distancia -->
-        <button class="tool-btn-float" id="measure-btn-float" onclick="toggleMeasure(); toggleToolsPanel();" title="Medir Distancia">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <!-- Regla de medir -->
-              <path d="M2 4h20v16H2V4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="2" y1="4" x2="2" y2="20" stroke="currentColor" stroke-width="2"/>
-              <line x1="5" y1="4" x2="5" y2="9" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="8" y1="4" x2="8" y2="12" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="11" y1="4" x2="11" y2="9" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="14" y1="4" x2="14" y2="12" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="17" y1="4" x2="17" y2="9" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="20" y1="4" x2="20" y2="12" stroke="currentColor" stroke-width="1.5"/>
-              <text x="12" y="18" font-size="5" fill="currentColor" text-anchor="middle" font-weight="bold">cm</text>
-            </svg>
-          </span>
-          <span class="label">Medir distancia</span>
-        </button>
-
-        <!-- Área y Perímetro -->
-        <button class="tool-btn-float" id="area-btn-float" onclick="toggleArea(); toggleToolsPanel();" title="Área y Perímetro">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <!-- Polígono -->
-              <polygon points="12,3 20,8 18,17 6,17 4,8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-              <!-- Puntos de vértices -->
-              <circle cx="12" cy="3" r="1.5" fill="currentColor"/>
-              <circle cx="20" cy="8" r="1.5" fill="currentColor"/>
-              <circle cx="18" cy="17" r="1.5" fill="currentColor"/>
-              <circle cx="6" cy="17" r="1.5" fill="currentColor"/>
-              <circle cx="4" cy="8" r="1.5" fill="currentColor"/>
-              <!-- Mediciones -->
-              <text x="12" y="11" font-size="4.5" fill="currentColor" text-anchor="middle" font-weight="bold">A=</text>
-              <text x="16" y="6" font-size="3.5" fill="currentColor" font-weight="bold">m</text>
-              <text x="8" y="13" font-size="3.5" fill="currentColor" font-weight="bold">m</text>
-            </svg>
-          </span>
-          <span class="label">Área y Perímetro</span>
-        </button>
-
-        <!-- Perfil de Elevación -->
-        <button class="tool-btn-float" id="profile-btn-float" onclick="toggleProfile(); toggleToolsPanel();" title="Perfil de Elevación">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/>
-            </svg>
-          </span>
-          <span class="label">Perfil de Elevación</span>
-        </button>
-
-        <!-- Buscar Coordenadas -->
-        <button class="tool-btn-float" id="search-btn-float" onclick="toggleSearchCoord();" title="Buscar Coordenadas">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
-            </svg>
-          </span>
-          <span class="label">Buscar Coordenadas</span>
-        </button>
-
-        <!-- Limpiar Análisis -->
-        <button class="tool-btn-float" id="clear-analysis-btn-float" onclick="limpiarAnalisis(); toggleToolsPanel();" title="Limpiar Análisis">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <!-- Icono de borrar/limpiar -->
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
-            </svg>
-          </span>
-          <span class="label">Limpiar Análisis</span>
-        </button>
+  <!-- Barra flotante de control de transparencia -->
+  <div id="transparency-container">
+    <div class="transparency-floating-bar">
+      <div class="transparency-title">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" style="width: 16px; height: 16px;">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" opacity="0.3"/>
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18V4c4.41 0 8 3.59 8 8s-3.59 8-8 8z"/>
+        </svg>
+        <span>Transparencia</span>
       </div>
-
-      <!-- Inputs de coordenadas (inicialmente ocultos) -->
-      <div id="coord-search-inputs-float" style="display: none; margin-bottom: 15px;">
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <input type="number" class="coord-input-float" id="search-lat-float" placeholder="Latitud" step="0.0001" />
-          <input type="number" class="coord-input-float" id="search-lon-float" placeholder="Longitud" step="0.0001" />
-          <button class="coord-search-btn" onclick="buscarCoordenadasFloat()">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" style="width: 16px; height: 16px; margin-right: 6px;">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            Ir a ubicación
-          </button>
-        </div>
+      <div class="transparency-subtitle">Última capa activada</div>
+      <div class="transparency-controls">
+        <span class="transparency-label">0%</span>
+        <input type="range" min="0" max="100" value="50" class="transparency-slider-float" id="polygon-transparency-float" oninput="ajustarTransparencia(this.value); document.getElementById('transparency-value-float').textContent = this.value + '%';">
+        <span class="transparency-label">100%</span>
       </div>
-      
-      <div class="transparency-header">Transparencia (última capa)</div>
-      <div class="transparency-control-float">
-        <div style="width: 93%; display: flex; flex-direction: column; gap: 8px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 10px; color: #ffffff; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.8); flex-shrink: 0;">0%</span>
-            <input type="range" min="0" max="100" value="50" class="transparency-slider" id="polygon-transparency-float" oninput="ajustarTransparencia(this.value); document.getElementById('transparency-value-float').textContent = this.value + '%';" onclick="event.stopPropagation();">
-            <span style="font-size: 10px; color: #ffffff; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.8); flex-shrink: 0;">100%</span>
-          </div>
-          <div style="text-align: center; margin-top: 2px;">
-            <div class="transparency-value" id="transparency-value-float">50%</div>
-          </div>
-        </div>
-      </div>
+      <div class="transparency-value-display" id="transparency-value-float">50%</div>
     </div>
   </div>
 
@@ -374,77 +214,6 @@
   </div>
 
   <!-- Botón flotante de mapas base -->
-  <div id="basemap-container">
-    <button id="basemap-btn" onclick="toggleBasemapPanel()">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" fill-opacity="0.8">
-        <!-- Mapa desplegado -->
-        <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
-      </svg>
-    </button>
-    <div id="basemap-panel">
-      <h4>
-        Mapas Base
-        <button class="close-btn" onclick="toggleBasemapPanel()">×</button>
-      </h4>
-      <div class="basemap-grid">
-        <button class="basemap-option active" id="basemap-osm" onclick="changeBasemapFloat('osm')">
-          <div class="basemap-preview">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <!-- Calles -->
-              <rect width="100" height="100" fill="#f4f3f0"/>
-              <line x1="0" y1="30" x2="100" y2="30" stroke="#ffffff" stroke-width="6"/>
-              <line x1="0" y1="30" x2="100" y2="30" stroke="#ffd700" stroke-width="3"/>
-              <line x1="50" y1="0" x2="50" y2="100" stroke="#ffffff" stroke-width="6"/>
-              <line x1="50" y1="0" x2="50" y2="100" stroke="#ffd700" stroke-width="3"/>
-              <line x1="0" y1="70" x2="100" y2="70" stroke="#ffffff" stroke-width="4"/>
-              <line x1="0" y1="70" x2="100" y2="70" stroke="#ddd" stroke-width="2"/>
-              <circle cx="50" cy="30" r="4" fill="#4a90e2"/>
-              <rect x="20" y="50" width="15" height="15" fill="#c0c0c0" opacity="0.6"/>
-              <rect x="70" y="10" width="12" height="12" fill="#90c090" opacity="0.5"/>
-            </svg>
-          </div>
-          <span class="basemap-label">Calles</span>
-          <div class="basemap-check">✓</div>
-        </button>
-        
-        <button class="basemap-option" id="basemap-satellite" onclick="changeBasemapFloat('satellite')">
-          <div class="basemap-preview">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <!-- Satélite -->
-              <rect width="100" height="100" fill="#3d5a40"/>
-              <path d="M20,40 Q30,35 40,40 T60,45 T80,50" fill="#5a7a5c" opacity="0.8"/>
-              <path d="M10,60 Q25,55 40,60 T70,65" fill="#4a6a4c" opacity="0.7"/>
-              <circle cx="65" cy="25" r="8" fill="#8b9d83"/>
-              <circle cx="30" cy="75" r="6" fill="#6d8a6f"/>
-              <path d="M50,10 L55,15 L50,20 L45,15 Z" fill="#7a9678"/>
-              <rect x="20" y="50" width="8" height="8" fill="#8a9b87" opacity="0.9"/>
-            </svg>
-          </div>
-          <span class="basemap-label">Satélite</span>
-          <div class="basemap-check">✓</div>
-        </button>
-        
-        <button class="basemap-option" id="basemap-topo" onclick="changeBasemapFloat('topo')">
-          <div class="basemap-preview">
-            <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-              <!-- Topográfico -->
-              <rect width="100" height="100" fill="#faf8f3"/>
-              <path d="M0,50 Q25,45 50,50 T100,50" fill="none" stroke="#d4a574" stroke-width="1" opacity="0.6"/>
-              <path d="M0,60 Q25,55 50,60 T100,60" fill="none" stroke="#c9985a" stroke-width="1" opacity="0.6"/>
-              <path d="M0,70 Q25,65 50,70 T100,70" fill="none" stroke="#b88a50" stroke-width="1" opacity="0.6"/>
-              <path d="M0,40 Q25,35 50,40 T100,40" fill="none" stroke="#e0b885" stroke-width="1" opacity="0.6"/>
-              <path d="M30,20 L35,30 L40,25 L45,35" fill="none" stroke="#8a7a5a" stroke-width="1.5"/>
-              <circle cx="50" cy="30" r="2" fill="#8a2035"/>
-              <text x="52" y="32" font-size="6" fill="#666">950</text>
-              <path d="M60,60 Q65,58 70,60" fill="none" stroke="#4a90e2" stroke-width="1.5"/>
-            </svg>
-          </div>
-          <span class="basemap-label">Topográfico</span>
-          <div class="basemap-check">✓</div>
-        </button>
-      </div>
-    </div>
-  </div>
   
   <!-- Panel de perfil de elevación -->
   <div id="elevation-profile">
@@ -455,6 +224,238 @@
     <canvas id="elevation-chart"></canvas>
   </div>
   
+  
+  <!-- Barra lateral derecha de herramientas -->
+  <div id="right-toolbar">
+    <button class="toolbar-btn" onclick="toggleBasemapPanelRight()" title="Mapas Base">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="map.zoomIn()" title="Zoom In">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <!-- Círculo de la lupa -->
+        <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/>
+        <!-- Mango de la lupa -->
+        <path d="M 15.5 15.5 L 21 21" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="21" cy="21" r="1.5" fill="currentColor"/>
+        <!-- Símbolo + dentro de la lupa (más fino) -->
+        <line x1="10" y1="7" x2="10" y2="13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="7" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="map.zoomOut()" title="Zoom Out">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <!-- Círculo de la lupa -->
+        <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/>
+        <!-- Mango de la lupa -->
+        <path d="M 15.5 15.5 L 21 21" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="21" cy="21" r="1.5" fill="currentColor"/>
+        <!-- Símbolo - dentro de la lupa (más largo y grueso para mejor visibilidad) -->
+        <line x1="5.5" y1="10" x2="14.5" y2="10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="toggleKmlPanelRight()" title="Cargar KML/KMZ">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="apagarTodasLasCapas()" title="Desactivar todas las capas visibles">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+        <path d="M4 4 L20 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="toggleMeasure()" title="Medir Distancia">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <!-- Rectángulo de la regla sin relleno -->
+        <rect x="2" y="7" width="20" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="2.5"/>
+        <!-- Marcas grandes -->
+        <line x1="4" y1="7" x2="4" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="8" y1="7" x2="8" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="12" y1="7" x2="12" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="16" y1="7" x2="16" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="20" y1="7" x2="20" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <!-- Marcas pequeñas -->
+        <line x1="6" y1="7" x2="6" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="10" y1="7" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="14" y1="7" x2="14" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <line x1="18" y1="7" x2="18" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="toggleArea()" title="Área y Perímetro">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <!-- Polígono con gradiente -->
+        <polygon points="12,4 19,7 20,15 14,19 6,18 4,10" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <!-- Vértices destacados -->
+        <circle cx="12" cy="4" r="1.8" fill="currentColor"/>
+        <circle cx="19" cy="7" r="1.8" fill="currentColor"/>
+        <circle cx="20" cy="15" r="1.8" fill="currentColor"/>
+        <circle cx="14" cy="19" r="1.8" fill="currentColor"/>
+        <circle cx="6" cy="18" r="1.8" fill="currentColor"/>
+        <circle cx="4" cy="10" r="1.8" fill="currentColor"/>
+        <!-- Símbolo de área en el centro -->
+        <text x="12" y="13" font-size="5" fill="currentColor" text-anchor="middle" font-weight="bold">A</text>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="toggleProfile()" title="Perfil de Elevación">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="toggleSearchCoordFromToolbar()" title="Buscar Coordenadas">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="toggleSearchPlaces()" title="Buscar Lugares">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>
+    </button>
+    
+    <button class="toolbar-btn" onclick="limpiarAnalisis()" title="Limpiar Análisis">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+        <!-- Círculo de fondo sutil -->
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"/>
+        <!-- Líneas del tache con estilo minimalista -->
+        <line x1="8" y1="8" x2="16" y2="16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="16" y1="8" x2="8" y2="16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Panel de KML desde la barra derecha -->
+  <div id="kml-panel-right">
+    <h4>
+      Archivos KML/KMZ
+      <button class="close-btn" onclick="toggleKmlPanelRight()">×</button>
+    </h4>
+    
+    <div class="kml-upload-section-right">
+      <input type="file" id="kml-file-input-right" accept=".kml,.kmz" style="display: none;" onchange="handleKmlUploadRight(event)">
+      <button class="kml-upload-btn-right" onclick="document.getElementById('kml-file-input-right').click()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" style="width: 16px; height: 16px;">
+          <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
+        </svg>
+        Seleccionar archivo
+      </button>
+    </div>
+
+    <div class="kml-layers-container-right" id="kml-layers-list-right">
+      <!-- Las capas KML se agregarán aquí dinámicamente -->
+      <div class="kml-empty-state-right">
+        No hay archivos KML cargados
+      </div>
+    </div>
+
+    <button class="clear-all-kml-btn-right" id="clear-kml-btn-right" onclick="clearAllKmlRight()" style="display: none;">
+      Limpiar todos los KML
+    </button>
+  </div>
+
+  <!-- Panel de mapas base desde la barra derecha -->
+  <div id="basemap-panel-right">
+    <h4>
+      Mapas Base
+      <button class="close-btn" onclick="toggleBasemapPanelRight()">×</button>
+    </h4>
+    <div class="basemap-grid-right">
+      <button class="basemap-option-right" id="basemap-osm-right" onclick="changeBasemapFromRight('osm')">
+        <div class="basemap-preview-right">
+          <img src="https://tile.openstreetmap.org/9/146/197.png" alt="Calles">
+        </div>
+        <div class="basemap-info-right">
+          <span class="basemap-label-right">Calles</span>
+          <span class="basemap-desc-right">Mapa de calles y carreteras</span>
+        </div>
+        <div class="basemap-check-right">✓</div>
+      </button>
+      
+      <button class="basemap-option-right active" id="basemap-satellite-right" onclick="changeBasemapFromRight('satellite')">
+        <div class="basemap-preview-right">
+          <img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/9/197/146" alt="Satélite">
+        </div>
+        <div class="basemap-info-right">
+          <span class="basemap-label-right">Satélite</span>
+          <span class="basemap-desc-right">Imágenes satelitales</span>
+        </div>
+        <div class="basemap-check-right">✓</div>
+      </button>
+      
+      <button class="basemap-option-right" id="basemap-topo-right" onclick="changeBasemapFromRight('topo')">
+        <div class="basemap-preview-right">
+          <img src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/9/197/146" alt="Topográfico">
+        </div>
+        <div class="basemap-info-right">
+          <span class="basemap-label-right">Topográfico</span>
+          <span class="basemap-desc-right">Mapa con relieve y topografía</span>
+        </div>
+        <div class="basemap-check-right">✓</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel de búsqueda de coordenadas desde la barra derecha -->
+  <div id="coord-search-panel-right">
+    <h4>
+      Buscar Coordenadas
+      <button class="close-btn" onclick="toggleCoordSearchPanelRight()">×</button>
+    </h4>
+    <div class="coord-search-content-right">
+      <div class="coord-input-group">
+        <label for="coord-lat-input">Latitud</label>
+        <input type="number" id="coord-lat-input" placeholder="Ej: 19.4326" step="0.000001" />
+      </div>
+      
+      <div class="coord-input-group">
+        <label for="coord-lng-input">Longitud</label>
+        <input type="number" id="coord-lng-input" placeholder="Ej: -99.1332" step="0.000001" />
+      </div>
+      
+      <button class="coord-search-btn-right" onclick="buscarCoordenadasFromPanel()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" style="width: 18px; height: 18px; margin-right: 8px;">
+          <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+        </svg>
+        Ir a Ubicación
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel de búsqueda de lugares desde la barra derecha -->
+  <div id="places-search-panel-right">
+    <h4>
+      Buscar Lugares
+      <button class="close-btn" onclick="togglePlacesSearchPanelRight()">×</button>
+    </h4>
+    <div class="places-search-content-right">
+      <div class="places-input-group">
+        <input type="text" id="places-search-input" placeholder="Buscar municipio, ciudad, lugar..." oninput="searchPlacesFromPanel(event)" />
+        <svg class="search-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+          <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+        </svg>
+      </div>
+      
+      <div id="places-search-loading" class="places-loading">
+        <div class="spinner-small"></div>
+        Buscando...
+      </div>
+      
+      <div id="places-search-results" class="places-results">
+        <!-- Resultados aparecerán aquí -->
+      </div>
+    </div>
+  </div>
+
   <div id="coordinates">Lat: 0.0000° | Lon: 0.0000°</div>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.min.js"></script>

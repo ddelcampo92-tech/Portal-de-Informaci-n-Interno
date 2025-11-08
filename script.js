@@ -56,13 +56,24 @@ let areaMode = false;
 let areaPoints = [];
 let currentAreaPolygon = null;
 
+// Coordenadas para el zoom de inicio (Estado de México)
+const INITIAL_ZOOM_COORDS = {
+  lat: 19.4326,
+  lng: -99.1332,
+  zoom: 9
+};
+
+// Coordenadas para México completo (vista inicial)
+const MEXICO_BOUNDS = [
+  [14.5388, -118.4662], // Esquina suroeste
+  [32.7186, -86.7104]   // Esquina noreste
+];
+
 const map = L.map('map', {
-  zoomControl: true
-}).setView([19.4326, -99.1332], 9);
+  zoomControl: false
+}).fitBounds(MEXICO_BOUNDS); // Inicia mostrando México completo
 
-map.zoomControl.setPosition('topright');
-
-// Agregar escala gráfica en la parte inferior izquierda
+// Agregar escala gráfica en la parte inferior izquierda (arriba de la caja de transparencia)
 L.control.scale({
   position: 'bottomleft',
   metric: true,
@@ -70,8 +81,9 @@ L.control.scale({
   maxWidth: 150
 }).addTo(map);
 
-let currentBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors',
+// Iniciar con mapa satélite
+let currentBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  attribution: '© Esri',
   maxZoom: 19
 }).addTo(map);
 
@@ -2702,6 +2714,20 @@ async function cargarCapa(nombre) {
       }
     }
     
+    // Hacer zoom automático a la primera capa que se activa
+    const numCapasActivas = Object.keys(capasActivas).length;
+    if (numCapasActivas === 1 && capasActivas[nombre]) {
+      try {
+        const bounds = capasActivas[nombre].getBounds();
+        if (bounds && bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [50, 50] });
+          console.log(`🎯 Zoom automático a la primera capa: ${nombre}`);
+        }
+      } catch (err) {
+        console.warn(`Error al hacer zoom a ${nombre}:`, err.message);
+      }
+    }
+    
     status.textContent = `✅ ${nombre} cargado (${data.length} features)`;
     status.className = 'status-success';
     hideLoading();
@@ -2903,6 +2929,7 @@ function toggleSidebar() {
   const deactivateContainer = document.getElementById('deactivate-layers-container');
   const zoomInicioContainer = document.getElementById('zoom-inicio-container');
   const toolsContainer = document.getElementById('tools-container');
+  const transparencyContainer = document.getElementById('transparency-container');
   
   // Toggle las clases
   sidebar.classList.toggle('hidden');
@@ -2915,6 +2942,7 @@ function toggleSidebar() {
   if (deactivateContainer) deactivateContainer.classList.toggle('sidebar-hidden');
   if (zoomInicioContainer) zoomInicioContainer.classList.toggle('sidebar-hidden');
   if (toolsContainer) toolsContainer.classList.toggle('sidebar-hidden');
+  if (transparencyContainer) transparencyContainer.classList.toggle('sidebar-hidden');
   
   // Invalidar el tamaño del mapa inmediatamente y después de la transición
   // Esto asegura que el mapa se redibuje correctamente en toda el área expandida
@@ -2949,9 +2977,9 @@ function zoomInicio() {
     }
   }
   
-  // Si no existe estadomex o hubo error, volver a la vista inicial predeterminada
-  map.setView([19.4326, -99.1332], 9);
-  console.log('🗺️ Zoom ajustado a la vista inicial predeterminada');
+  // Si no existe estadomex o hubo error, volver a la vista del Estado de México
+  map.setView([INITIAL_ZOOM_COORDS.lat, INITIAL_ZOOM_COORDS.lng], INITIAL_ZOOM_COORDS.zoom);
+  console.log('🗺️ Zoom ajustado a la vista del Estado de México');
 }
 
 // Función para mostrar/ocultar el panel de herramientas flotante
@@ -3465,6 +3493,767 @@ function clearAllKml() {
 
 // ========== FIN DE FUNCIONES KML/KMZ ==========
 
+// ========== FUNCIONES PARA LA BARRA LATERAL DERECHA ==========
+
+// Variable global para las capas KML del panel derecho
+let kmlLayersRight = [];
+
+// Función para alternar búsqueda de coordenadas desde la barra de herramientas
+function toggleSearchCoordFromToolbar() {
+  toggleCoordSearchPanelRight();
+}
+
+// Función para alternar búsqueda de lugares
+function toggleSearchPlaces() {
+  togglePlacesSearchPanelRight();
+}
+
+// Función para abrir la sección KML desde la barra de herramientas (obsoleta, usar toggleKmlPanelRight)
+function openKmlSectionFromToolbar() {
+  toggleKmlPanelRight();
+}
+
+// Función para alternar el panel de KML desde la barra derecha
+function toggleKmlPanelRight() {
+  const panel = document.getElementById('kml-panel-right');
+  const basemapPanel = document.getElementById('basemap-panel-right');
+  const coordPanel = document.getElementById('coord-search-panel-right');
+  const placesPanel = document.getElementById('places-search-panel-right');
+  
+  // Cerrar el panel de mapas base si está abierto
+  if (basemapPanel && basemapPanel.classList.contains('show')) {
+    basemapPanel.classList.remove('show');
+  }
+  
+  // Cerrar el panel de coordenadas si está abierto
+  if (coordPanel && coordPanel.classList.contains('show')) {
+    coordPanel.classList.remove('show');
+  }
+  
+  // Cerrar el panel de lugares si está abierto
+  if (placesPanel && placesPanel.classList.contains('show')) {
+    placesPanel.classList.remove('show');
+  }
+  
+  if (panel) {
+    if (panel.classList.contains('show')) {
+      panel.classList.remove('show');
+    } else {
+      panel.classList.add('show');
+    }
+  }
+}
+
+// Función para alternar el panel de mapas base desde la barra derecha
+function toggleBasemapPanelRight() {
+  const panel = document.getElementById('basemap-panel-right');
+  const kmlPanel = document.getElementById('kml-panel-right');
+  const coordPanel = document.getElementById('coord-search-panel-right');
+  const placesPanel = document.getElementById('places-search-panel-right');
+  
+  // Cerrar el panel de KML si está abierto
+  if (kmlPanel && kmlPanel.classList.contains('show')) {
+    kmlPanel.classList.remove('show');
+  }
+  
+  // Cerrar el panel de coordenadas si está abierto
+  if (coordPanel && coordPanel.classList.contains('show')) {
+    coordPanel.classList.remove('show');
+  }
+  
+  // Cerrar el panel de lugares si está abierto
+  if (placesPanel && placesPanel.classList.contains('show')) {
+    placesPanel.classList.remove('show');
+  }
+  
+  if (panel) {
+    if (panel.classList.contains('show')) {
+      panel.classList.remove('show');
+    } else {
+      panel.classList.add('show');
+    }
+  }
+}
+
+// Función para alternar el panel de búsqueda de coordenadas desde la barra derecha
+function toggleCoordSearchPanelRight() {
+  const panel = document.getElementById('coord-search-panel-right');
+  const kmlPanel = document.getElementById('kml-panel-right');
+  const basemapPanel = document.getElementById('basemap-panel-right');
+  const placesPanel = document.getElementById('places-search-panel-right');
+  
+  // Cerrar otros paneles si están abiertos
+  if (kmlPanel && kmlPanel.classList.contains('show')) {
+    kmlPanel.classList.remove('show');
+  }
+  
+  if (basemapPanel && basemapPanel.classList.contains('show')) {
+    basemapPanel.classList.remove('show');
+  }
+  
+  if (placesPanel && placesPanel.classList.contains('show')) {
+    placesPanel.classList.remove('show');
+  }
+  
+  if (panel) {
+    if (panel.classList.contains('show')) {
+      panel.classList.remove('show');
+    } else {
+      panel.classList.add('show');
+      // Enfocar el input de latitud cuando se abre el panel
+      setTimeout(() => {
+        const latInput = document.getElementById('coord-lat-input');
+        if (latInput) latInput.focus();
+      }, 100);
+    }
+  }
+}
+
+// Función para alternar el panel de búsqueda de lugares desde la barra derecha
+function togglePlacesSearchPanelRight() {
+  const panel = document.getElementById('places-search-panel-right');
+  const kmlPanel = document.getElementById('kml-panel-right');
+  const basemapPanel = document.getElementById('basemap-panel-right');
+  const coordPanel = document.getElementById('coord-search-panel-right');
+  
+  // Cerrar otros paneles si están abiertos
+  if (kmlPanel && kmlPanel.classList.contains('show')) {
+    kmlPanel.classList.remove('show');
+  }
+  
+  if (basemapPanel && basemapPanel.classList.contains('show')) {
+    basemapPanel.classList.remove('show');
+  }
+  
+  if (coordPanel && coordPanel.classList.contains('show')) {
+    coordPanel.classList.remove('show');
+  }
+  
+  if (panel) {
+    if (panel.classList.contains('show')) {
+      panel.classList.remove('show');
+    } else {
+      panel.classList.add('show');
+      // Enfocar el input de búsqueda cuando se abre el panel
+      setTimeout(() => {
+        const searchInput = document.getElementById('places-search-input');
+        if (searchInput) searchInput.focus();
+      }, 100);
+    }
+  }
+}
+
+// Función para buscar lugares desde el panel
+async function searchPlacesFromPanel(event) {
+  const query = event.target.value.trim();
+  const resultsDiv = document.getElementById('places-search-results');
+  const loadingDiv = document.getElementById('places-search-loading');
+  
+  // Limpiar timeout anterior
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
+  }
+  
+  if (query.length < 3) {
+    resultsDiv.innerHTML = '';
+    loadingDiv.classList.remove('show');
+    return;
+  }
+  
+  // Esperar 500ms después de que el usuario deje de escribir
+  searchTimeout = setTimeout(async () => {
+    loadingDiv.classList.add('show');
+    resultsDiv.innerHTML = '';
+    
+    try {
+      // Usar Nominatim de OpenStreetMap para búsqueda en México
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&countrycodes=mx`
+      );
+      
+      if (!response.ok) throw new Error('Error en la búsqueda');
+      
+      const results = await response.json();
+      loadingDiv.classList.remove('show');
+      
+      if (results.length === 0) {
+        resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: #999; font-size: 12px;">No se encontraron resultados</div>';
+        return;
+      }
+      
+      resultsDiv.innerHTML = results.map(result => `
+        <div class="place-result-item" onclick="goToPlaceFromPanel(${result.lat}, ${result.lon}, '${result.display_name.replace(/'/g, "\\'")}')">
+          <div class="place-result-name">${result.display_name.split(',')[0]}</div>
+          <div class="place-result-address">${result.display_name}</div>
+        </div>
+      `).join('');
+      
+    } catch (error) {
+      loadingDiv.classList.remove('show');
+      resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: #e74c3c; font-size: 12px;">⚠️ Error al buscar lugares</div>';
+    }
+  }, 500);
+}
+
+// Función para ir al lugar seleccionado
+function goToPlaceFromPanel(lat, lon, name) {
+  // Remover marcador anterior si existe
+  if (searchPlacesMarker) {
+    map.removeLayer(searchPlacesMarker);
+  }
+  
+  // Crear nuevo marcador con ícono personalizado
+  searchPlacesMarker = L.marker([lat, lon], {
+    icon: L.divIcon({
+      className: 'custom-search-marker',
+      html: `
+        <div style="
+          background: linear-gradient(135deg, #8a2035 0%, #b99056 100%); 
+          width: 30px; 
+          height: 30px; 
+          border-radius: 50% 50% 50% 0; 
+          transform: rotate(-45deg); 
+          border: 3px solid white; 
+          box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        ">
+          <div style="
+            width: 12px; 
+            height: 12px; 
+            background: white; 
+            border-radius: 50%;
+            transform: rotate(45deg);
+          "></div>
+        </div>
+      `,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -30]
+    })
+  }).addTo(map);
+  
+  // Crear popup con el nombre del lugar
+  searchPlacesMarker.bindPopup(`
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 5px;">
+      <strong style="color: #8a2035; font-size: 13px;">${name.split(',')[0]}</strong><br>
+      <span style="font-size: 11px; color: #666;">${name}</span><br>
+      <span style="font-size: 10px; color: #999; margin-top: 5px; display: block;">
+        ${lat.toFixed(6)}°, ${lon.toFixed(6)}°
+      </span>
+    </div>
+  `).openPopup();
+  
+  // Centrar el mapa en la ubicación
+  map.setView([lat, lon], 14, {
+    animate: true,
+    duration: 1
+  });
+  
+  // Cerrar el panel de búsqueda
+  togglePlacesSearchPanelRight();
+  
+  // Mostrar mensaje de éxito
+  const status = document.getElementById('status');
+  if (status) {
+    status.textContent = `📍 ${name.split(',')[0]}`;
+    status.className = 'status-success';
+  }
+}
+
+// Función para buscar coordenadas desde el panel
+function buscarCoordenadasFromPanel() {
+  const latInput = document.getElementById('coord-lat-input');
+  const lngInput = document.getElementById('coord-lng-input');
+  
+  if (!latInput || !lngInput) return;
+  
+  const lat = parseFloat(latInput.value);
+  const lng = parseFloat(lngInput.value);
+  
+  if (isNaN(lat) || isNaN(lng)) {
+    alert('Por favor ingresa valores numéricos válidos para latitud y longitud');
+    return;
+  }
+  
+  // Validar rangos de coordenadas
+  if (lat < -90 || lat > 90) {
+    alert('La latitud debe estar entre -90 y 90 grados');
+    return;
+  }
+  
+  if (lng < -180 || lng > 180) {
+    alert('La longitud debe estar entre -180 y 180 grados');
+    return;
+  }
+  
+  // Remover marcador anterior si existe
+  if (searchMarker) {
+    map.removeLayer(searchMarker);
+  }
+  
+  // Crear nuevo marcador
+  searchMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      className: 'search-marker',
+      html: '<div style="background: #8a2035; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>',
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    })
+  }).addTo(map);
+  
+  // Agregar popup al marcador
+  searchMarker.bindPopup(`
+    <div style="text-align: center;">
+      <strong>Ubicación</strong><br>
+      Lat: ${lat.toFixed(6)}°<br>
+      Lon: ${lng.toFixed(6)}°
+    </div>
+  `).openPopup();
+  
+  // Hacer zoom a la ubicación
+  map.setView([lat, lng], 15);
+  
+  // Cerrar el panel
+  toggleCoordSearchPanelRight();
+  
+  // Mostrar mensaje de éxito
+  const status = document.getElementById('status');
+  if (status) {
+    status.textContent = `📍 Ubicación encontrada: ${lat.toFixed(4)}°, ${lng.toFixed(4)}°`;
+    status.className = 'status-success';
+  }
+}
+
+// Función para cambiar el mapa base desde el panel derecho
+function changeBasemapFromRight(type) {
+  // Usar la función existente changeBasemapFloat si existe, o implementar aquí
+  if (typeof changeBasemapFloat === 'function') {
+    changeBasemapFloat(type);
+  } else {
+    // Implementación alternativa
+    if (currentBasemap) {
+      map.removeLayer(currentBasemap);
+    }
+    
+    let newBasemap;
+    switch(type) {
+      case 'osm':
+        newBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19
+        });
+        break;
+      case 'satellite':
+        newBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: '© Esri',
+          maxZoom: 19
+        });
+        break;
+      case 'topo':
+        newBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+          attribution: '© Esri',
+          maxZoom: 19
+        });
+        break;
+    }
+    
+    if (newBasemap) {
+      newBasemap.addTo(map);
+      currentBasemap = newBasemap;
+    }
+  }
+  
+  // Actualizar los estilos activos en el panel derecho
+  document.querySelectorAll('.basemap-option-right').forEach(option => {
+    option.classList.remove('active');
+  });
+  const activeOption = document.getElementById(`basemap-${type}-right`);
+  if (activeOption) {
+    activeOption.classList.add('active');
+  }
+  
+  // Actualizar también el panel flotante original si existe
+  document.querySelectorAll('.basemap-option').forEach(option => {
+    option.classList.remove('active');
+  });
+  const originalOption = document.getElementById(`basemap-${type}`);
+  if (originalOption) {
+    originalOption.classList.add('active');
+  }
+}
+
+// Función para manejar la carga de archivos KML desde el panel derecho
+function handleKmlUploadRight(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  
+  if (file.name.toLowerCase().endsWith('.kmz')) {
+    reader.onload = function(e) {
+      JSZip.loadAsync(e.target.result).then(function(zip) {
+        const kmlFile = Object.keys(zip.files).find(name => name.toLowerCase().endsWith('.kml'));
+        if (kmlFile) {
+          zip.files[kmlFile].async('string').then(function(kmlText) {
+            loadKmlFromTextRight(kmlText, file.name);
+          });
+        }
+      });
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.onload = function(e) {
+      loadKmlFromTextRight(e.target.result, file.name);
+    };
+    reader.readAsText(file);
+  }
+  
+  // Limpiar el input
+  event.target.value = '';
+}
+
+// Función para cargar KML desde texto en el panel derecho
+function loadKmlFromTextRight(kmlText, fileName) {
+  try {
+    const parser = new DOMParser();
+    const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+    
+    const layer = omnivore.kml.parse(kmlText);
+    
+    // Contar features y extraer información
+    let featureCount = 0;
+    const features = [];
+    
+    layer.eachLayer(function(featureLayer) {
+      featureCount++;
+      if (featureLayer.feature && featureLayer.feature.properties) {
+        features.push({
+          name: featureLayer.feature.properties.name || `Objeto ${featureCount}`,
+          layer: featureLayer
+        });
+      }
+    });
+    
+    // Agregar al mapa
+    layer.addTo(map);
+    
+    // Guardar referencia
+    const layerIndex = kmlLayersRight.length;
+    kmlLayersRight.push({
+      name: fileName,
+      layer: layer,
+      visible: true,
+      bounds: layer.getBounds(),
+      featureCount: featureCount,
+      features: features
+    });
+    
+    // Zoom a la capa
+    if (layer.getBounds().isValid()) {
+      map.fitBounds(layer.getBounds());
+    }
+    
+    // Actualizar la lista
+    updateKmlLayersListRight();
+    
+    console.log('✅ KML cargado correctamente:', fileName);
+  } catch (error) {
+    console.error('Error al cargar KML:', error);
+    alert('Error al cargar el archivo KML/KMZ');
+  }
+}
+
+// Función para expandir/colapsar la lista de features
+function toggleKmlFeaturesListRight(index) {
+  const featuresList = document.getElementById(`kml-features-right-${index}`);
+  if (featuresList) {
+    featuresList.classList.toggle('expanded');
+  }
+}
+
+// Función para hacer zoom a una feature específica
+function zoomToKmlFeatureRight(layerIndex, featureIndex) {
+  if (!kmlLayersRight[layerIndex]) return;
+  
+  const layerInfo = kmlLayersRight[layerIndex];
+  if (!layerInfo.features || !layerInfo.features[featureIndex]) return;
+  
+  const feature = layerInfo.features[featureIndex];
+  
+  // Obtener los bounds de la feature
+  if (feature.layer.getBounds) {
+    map.fitBounds(feature.layer.getBounds());
+  } else if (feature.layer.getLatLng) {
+    map.setView(feature.layer.getLatLng(), 16);
+  }
+}
+
+// Función para actualizar la lista de capas KML en el panel derecho
+function updateKmlLayersListRight() {
+  const container = document.getElementById('kml-layers-list-right');
+  const clearBtn = document.getElementById('clear-kml-btn-right');
+  
+  if (!container) return;
+  
+  if (kmlLayersRight.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #999; font-size: 13px;">No hay archivos KML cargados</div>';
+    if (clearBtn) clearBtn.style.display = 'none';
+    return;
+  }
+  
+  if (clearBtn) clearBtn.style.display = 'block';
+  
+  container.innerHTML = '';
+  
+  kmlLayersRight.forEach((layerInfo, index) => {
+    const item = document.createElement('div');
+    item.className = 'kml-layer-item-right';
+    
+    // Crear el header con info básica y acciones
+    const hasMultipleFeatures = layerInfo.features && layerInfo.features.length > 1;
+    
+    item.innerHTML = `
+      <div class="kml-layer-header-right">
+        <div class="kml-layer-info-right">
+          <div class="kml-layer-name-right" title="${layerInfo.name}">${layerInfo.name}</div>
+          <div class="kml-layer-features-right">${layerInfo.featureCount || 1} objeto(s)</div>
+        </div>
+        <div class="kml-layer-actions-right">
+          ${hasMultipleFeatures ? `
+          <button class="kml-expand-btn-right" onclick="toggleKmlFeaturesListRight(${index})" title="Ver objetos">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#b99056">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </button>
+          ` : ''}
+          <button class="kml-action-btn-right visibility-btn ${layerInfo.visible ? '' : 'hidden'}" 
+                  onclick="toggleKmlLayerVisibilityRight(${index})" 
+                  title="${layerInfo.visible ? 'Ocultar' : 'Mostrar'}">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              ${layerInfo.visible ? 
+                '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>' :
+                '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>'
+              }
+            </svg>
+          </button>
+          <button class="kml-action-btn-right" onclick="zoomToKmlLayerRight(${index})" title="Zoom a capa">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
+            </svg>
+          </button>
+          <button class="kml-action-btn-right" onclick="removeKmlLayerRight(${index})" title="Eliminar">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    `;
+    
+    // Si tiene múltiples features, agregar la lista expandible
+    if (hasMultipleFeatures) {
+      const featuresList = document.createElement('div');
+      featuresList.className = 'kml-features-list-right';
+      featuresList.id = `kml-features-right-${index}`;
+      
+      layerInfo.features.forEach((feature, featureIndex) => {
+        const featureItem = document.createElement('div');
+        featureItem.className = 'kml-feature-item-right';
+        featureItem.innerHTML = `
+          <div class="kml-feature-name-right" title="${feature.name}">${feature.name}</div>
+          <button class="kml-feature-zoom-btn-right" onclick="zoomToKmlFeatureRight(${index}, ${featureIndex})" title="Zoom">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
+            </svg>
+          </button>
+        `;
+        featuresList.appendChild(featureItem);
+      });
+      
+      item.appendChild(featuresList);
+    }
+    
+    container.appendChild(item);
+  });
+}
+
+// Función para alternar visibilidad de una capa KML
+function toggleKmlLayerVisibilityRight(index) {
+  if (!kmlLayersRight[index]) return;
+  
+  const layerInfo = kmlLayersRight[index];
+  
+  if (layerInfo.visible) {
+    map.removeLayer(layerInfo.layer);
+    layerInfo.visible = false;
+  } else {
+    layerInfo.layer.addTo(map);
+    layerInfo.visible = true;
+  }
+  
+  updateKmlLayersListRight();
+}
+
+// Función para hacer zoom a una capa KML
+function zoomToKmlLayerRight(index) {
+  if (!kmlLayersRight[index]) return;
+  
+  const layerInfo = kmlLayersRight[index];
+  
+  if (layerInfo.bounds && layerInfo.bounds.isValid()) {
+    map.fitBounds(layerInfo.bounds);
+  }
+}
+
+// Función para eliminar una capa KML
+function removeKmlLayerRight(index) {
+  if (!kmlLayersRight[index]) return;
+  
+  const layerInfo = kmlLayersRight[index];
+  
+  // Remover del mapa
+  if (layerInfo.visible) {
+    map.removeLayer(layerInfo.layer);
+  }
+  
+  // Remover del array
+  kmlLayersRight.splice(index, 1);
+  
+  // Actualizar la lista
+  updateKmlLayersListRight();
+}
+
+// Función para limpiar todas las capas KML del panel derecho
+function clearAllKmlRight() {
+  if (kmlLayersRight.length === 0) return;
+  
+  // Confirmar
+  if (!confirm('¿Deseas eliminar todos los archivos KML cargados?')) {
+    return;
+  }
+  
+  // Remover todas las capas del mapa
+  kmlLayersRight.forEach(layerInfo => {
+    if (layerInfo.visible) {
+      map.removeLayer(layerInfo.layer);
+    }
+  });
+  
+  // Limpiar el array
+  kmlLayersRight = [];
+  
+  // Actualizar la interfaz
+  updateKmlLayersListRight();
+}
+
+// Cerrar paneles si se hace clic fuera de ellos
+document.addEventListener('click', function(event) {
+  const basemapPanel = document.getElementById('basemap-panel-right');
+  const kmlPanel = document.getElementById('kml-panel-right');
+  const toolbar = document.getElementById('right-toolbar');
+  
+  // Paneles de mapas base y KML
+  if (basemapPanel && toolbar && kmlPanel) {
+    const clickedInsideBasemapPanel = basemapPanel.contains(event.target);
+    const clickedInsideKmlPanel = kmlPanel.contains(event.target);
+    const clickedInsideToolbar = toolbar.contains(event.target);
+    
+    if (!clickedInsideBasemapPanel && !clickedInsideToolbar && basemapPanel.classList.contains('show')) {
+      basemapPanel.classList.remove('show');
+    }
+    
+    if (!clickedInsideKmlPanel && !clickedInsideToolbar && kmlPanel.classList.contains('show')) {
+      kmlPanel.classList.remove('show');
+    }
+  }
+});
+
+// ========== FIN DE FUNCIONES PARA BARRA LATERAL DERECHA ==========
+
+// ========== NUEVAS FUNCIONES ==========
+
+// Función para toggle del botón de búsqueda en la sidebar izquierda
+function toggleSearchSidebar() {
+  const searchInputs = document.getElementById('coord-search-inputs');
+  const searchBtn = document.getElementById('search-btn');
+  
+  if (searchInputs.style.display === 'none') {
+    searchInputs.style.display = 'block';
+    searchBtn.classList.add('active');
+  } else {
+    searchInputs.style.display = 'none';
+    searchBtn.classList.remove('active');
+  }
+}
+
+// Función para buscar coordenadas desde la sidebar
+function buscarCoordenadasSidebar() {
+  const lat = parseFloat(document.getElementById('search-lat').value);
+  const lng = parseFloat(document.getElementById('search-lon').value);
+  
+  if (isNaN(lat) || isNaN(lng)) {
+    alert('Por favor, ingresa coordenadas válidas.');
+    return;
+  }
+  
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    alert('Las coordenadas deben estar dentro de los rangos válidos:\nLatitud: -90 a 90\nLongitud: -180 a 180');
+    return;
+  }
+  
+  // Remover marcador anterior si existe
+  if (searchMarker) {
+    map.removeLayer(searchMarker);
+  }
+  
+  // Crear nuevo marcador personalizado
+  const icon = L.divIcon({
+    className: 'custom-search-marker',
+    html: `<div style="
+      background: linear-gradient(135deg, #8a2035 0%, #6d1a2a 100%);
+      width: 30px;
+      height: 30px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 3px solid white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      position: relative;
+    ">
+      <div style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 10px;
+        height: 10px;
+        background: white;
+        border-radius: 50%;
+      "></div>
+    </div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 30]
+  });
+  
+  searchMarker = L.marker([lat, lng], { icon: icon })
+    .addTo(map)
+    .bindPopup(`<b>Ubicación buscada</b><br>Lat: ${lat.toFixed(4)}<br>Lng: ${lng.toFixed(4)}`)
+    .openPopup();
+  
+  map.setView([lat, lng], 15);
+  
+  // Limpiar inputs después de buscar (opcional)
+  // document.getElementById('search-lat').value = '';
+  // document.getElementById('search-lon').value = '';
+}
+
+// Función para toggle del panel de transparencia
+
+// ========== FIN NUEVAS FUNCIONES ==========
+
 // Conectar automáticamente a Supabase al cargar la página
 window.addEventListener('DOMContentLoaded', function() {
   console.log('🚀 Conectando automáticamente a Supabase...');
@@ -3472,4 +4261,26 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     conectar();
   }, 500);
+});
+
+// Event listeners para búsqueda de coordenadas con Enter
+document.addEventListener('DOMContentLoaded', function() {
+  const latInput = document.getElementById('coord-lat-input');
+  const lngInput = document.getElementById('coord-lng-input');
+  
+  if (latInput) {
+    latInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        buscarCoordenadasFromPanel();
+      }
+    });
+  }
+  
+  if (lngInput) {
+    lngInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        buscarCoordenadasFromPanel();
+      }
+    });
+  }
 });
