@@ -3177,9 +3177,9 @@ function loadKmlFromText(kmlText, fileName) {
           layer.setStyle({
             color: '#8a2035',
             weight: 3,
-            opacity: 1,
+            opacity: 0.5,
             fillColor: '#b99056',
-            fillOpacity: 1
+            fillOpacity: 0.5
           });
         }
         
@@ -3762,6 +3762,125 @@ function goToPlaceFromPanel(lat, lon, name) {
   }
 }
 
+// ============================================================================
+// BÚSQUEDA DE LUGARES PARA VISTA 3D
+// ============================================================================
+
+let searchTimeout3D = null;
+
+async function searchPlacesFrom3D(event) {
+  const query = event.target.value.trim();
+  const resultsDiv = document.getElementById('places-search-results-3d');
+  const loadingDiv = document.getElementById('places-search-loading-3d');
+  
+  // Limpiar timeout anterior
+  if (searchTimeout3D) {
+    clearTimeout(searchTimeout3D);
+  }
+  
+  if (query.length < 3) {
+    resultsDiv.innerHTML = '';
+    if (loadingDiv) loadingDiv.style.display = 'none';
+    return;
+  }
+  
+  // Esperar 500ms después de que el usuario deje de escribir
+  searchTimeout3D = setTimeout(async () => {
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    resultsDiv.innerHTML = '';
+    
+    try {
+      // Usar Nominatim de OpenStreetMap para búsqueda en México
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&countrycodes=mx`
+      );
+      
+      if (!response.ok) throw new Error('Error en la búsqueda');
+      
+      const results = await response.json();
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      
+      if (results.length === 0) {
+        resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: #999; font-size: 12px;">No se encontraron resultados</div>';
+        return;
+      }
+      
+      resultsDiv.innerHTML = results.map(result => `
+        <div class="place-result-item" onclick="goToPlaceFrom3D(${result.lat}, ${result.lon}, '${result.display_name.replace(/'/g, "\\'")}')">
+          <div class="place-result-name">${result.display_name.split(',')[0]}</div>
+          <div class="place-result-address">${result.display_name}</div>
+        </div>
+      `).join('');
+      
+    } catch (error) {
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: #e74c3c; font-size: 12px;">⚠️ Error al buscar lugares</div>';
+      console.error('Error en búsqueda 3D:', error);
+    }
+  }, 500);
+}
+
+// Función para ir al lugar seleccionado en vista 3D
+function goToPlaceFrom3D(lat, lon, name) {
+  if (!maplibreMap || !is3DActive) {
+    console.warn('MapLibre no está disponible');
+    return;
+  }
+  
+  console.log(`🎯 Navegando a: ${name} [${lat}, ${lon}]`);
+  
+  // Centrar el mapa en la ubicación con animación
+  maplibreMap.flyTo({
+    center: [lon, lat],
+    zoom: 14,
+    pitch: 60,
+    bearing: 0,
+    duration: 2000,
+    essential: true
+  });
+  
+  // Agregar un marcador temporal en la ubicación
+  const el = document.createElement('div');
+  el.className = 'maplibre-marker-3d';
+  el.style.width = '30px';
+  el.style.height = '30px';
+  el.style.background = 'linear-gradient(135deg, #8a2035 0%, #b99056 100%)';
+  el.style.borderRadius = '50% 50% 50% 0';
+  el.style.transform = 'rotate(-45deg)';
+  el.style.border = '3px solid white';
+  el.style.boxShadow = '0 4px 8px rgba(0,0,0,0.3)';
+  el.style.cursor = 'pointer';
+  
+  // Crear popup con información
+  const popup = new maplibregl.Popup({ offset: 25 })
+    .setHTML(`
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 5px;">
+        <strong style="color: #8a2035; font-size: 13px;">${name.split(',')[0]}</strong><br>
+        <span style="font-size: 11px; color: #666;">${name}</span><br>
+        <span style="font-size: 10px; color: #999; margin-top: 5px; display: block;">
+          ${lat.toFixed(6)}°, ${lon.toFixed(6)}°
+        </span>
+      </div>
+    `);
+  
+  // Agregar marcador al mapa
+  new maplibregl.Marker(el)
+    .setLngLat([lon, lat])
+    .setPopup(popup)
+    .addTo(maplibreMap)
+    .togglePopup();
+  
+  console.log('✅ Marcador agregado en vista 3D');
+  
+  // Limpiar el input de búsqueda
+  const input = document.getElementById('places-search-input-3d');
+  if (input) input.value = '';
+  
+  // Limpiar resultados
+  const resultsDiv = document.getElementById('places-search-results-3d');
+  if (resultsDiv) resultsDiv.innerHTML = '';
+}
+
 // Función para buscar coordenadas desde el panel
 function buscarCoordenadasFromPanel() {
   const latInput = document.getElementById('coord-lat-input');
@@ -4284,3 +4403,1240 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
+
+// ==================== VISTA DE RELIEVE CON MAPLIBRE ====================
+
+let maplibreMap = null;
+let is3DActive = false;
+let activeLayersIn3D = {}; // Almacenar las capas activas en 3D
+
+// API Key de MapTiler
+const MAPTILER_KEY = 'V4RBY4K49xvpih23bdBO';
+
+// Configuración del Estado de México con bounds ampliados
+const EDOMEX_CONFIG = {
+  maxBounds: [
+    [-101.5, 17.5], // SO - Ampliado significativamente para dar más espacio y mostrar fondo negro
+    [-97.5, 21.0]   // NE - Ampliado significativamente
+  ],
+  center: [-99.6557, 19.2827], // Toluca
+  visualBounds: [
+    [-100.2, 18.8],
+    [-98.9, 20.0]
+  ]
+};
+
+// Coordenadas del Estado de México y áreas específicas (manteniendo compatibilidad con tu HTML)
+const EDOMEX_AREAS = {
+  full: {
+    center: [-99.6557, 19.2827],
+    zoom: 9.5,
+    pitch: 60,
+    name: "Estado Completo"
+  },
+  norte: {
+    center: [-99.2, 19.8],
+    zoom: 10,
+    pitch: 60,
+    name: "Norte (Tepotzotlán, Zumpango)"
+  },
+  sur: {
+    center: [-99.2, 18.9],
+    zoom: 10,
+    pitch: 60,
+    name: "Sur (Tenancingo, Malinalco)"
+  },
+  este: {
+    center: [-98.8, 19.3],
+    zoom: 10,
+    pitch: 65,
+    name: "Este (Texcoco, Chalco)"
+  },
+  oeste: {
+    center: [-100.1, 19.3],
+    zoom: 10,
+    pitch: 60,
+    name: "Oeste (Valle de Bravo)"
+  },
+  centro: {
+    center: [-99.6557, 19.2827],
+    zoom: 10,
+    pitch: 60,
+    name: "Centro (Toluca)"
+  },
+  toluca: {
+    center: [-99.6557, 19.2827],
+    zoom: 11,
+    pitch: 65,
+    name: "Toluca"
+  },
+  naucalpan: {
+    center: [-99.2386, 19.4735],
+    zoom: 12,
+    pitch: 65,
+    name: "Naucalpan"
+  },
+  ecatepec: {
+    center: [-99.0515, 19.6011],
+    zoom: 11,
+    pitch: 65,
+    name: "Ecatepec"
+  }
+};
+
+// ============================================================================
+// EXTRAER ESTILOS DE CAPA LEAFLET (mejorado para capas categorizadas)
+// ============================================================================
+function extractLeafletStyle(layer) {
+  const style = {
+    fillColor: '#ff6b6b',
+    fillOpacity: 0.4,
+    color: '#ff0000',
+    weight: 2,
+    opacity: 1,
+    radius: 6,
+    categorized: false,
+    styleFunction: null
+  };
+  
+  // Intentar obtener estilos de diferentes tipos de capas
+  if (layer.options) {
+    if (layer.options.fillColor) style.fillColor = layer.options.fillColor;
+    if (layer.options.fillOpacity !== undefined) style.fillOpacity = layer.options.fillOpacity;
+    if (layer.options.color) style.color = layer.options.color;
+    if (layer.options.weight !== undefined) style.weight = layer.options.weight;
+    if (layer.options.opacity !== undefined) style.opacity = layer.options.opacity;
+    if (layer.options.radius !== undefined) style.radius = layer.options.radius;
+    
+    // Capturar función de estilo para capas categorizadas
+    if (layer.options.style && typeof layer.options.style === 'function') {
+      style.categorized = true;
+      style.styleFunction = layer.options.style;
+    }
+  }
+  
+  // Para CircleMarkers y Circles
+  if (layer instanceof L.CircleMarker || layer instanceof L.Circle) {
+    if (layer.options.fillColor) style.fillColor = layer.options.fillColor;
+    if (layer.options.color) style.color = layer.options.color;
+    if (layer.options.radius !== undefined) style.radius = layer.options.radius;
+  }
+  
+  // Para Polylines y Polygons
+  if (layer instanceof L.Polyline || layer instanceof L.Polygon) {
+    if (layer.options.color) style.color = layer.options.color;
+    if (layer.options.weight !== undefined) style.weight = layer.options.weight;
+    if (layer.options.fillColor) style.fillColor = layer.options.fillColor;
+    if (layer.options.fillOpacity !== undefined) style.fillOpacity = layer.options.fillOpacity;
+  }
+  
+  // Para GeoJSON layers, capturar función de estilo y opciones
+  if (layer instanceof L.GeoJSON) {
+    if (layer.options.style && typeof layer.options.style === 'function') {
+      style.categorized = true;
+      style.styleFunction = layer.options.style;
+    }
+    
+    if (layer.options.pointToLayer && typeof layer.options.pointToLayer === 'function') {
+      style.pointToLayer = layer.options.pointToLayer;
+    }
+    
+    // Intentar obtener estilos del primer feature
+    if (layer.getLayers().length > 0) {
+      const firstLayer = layer.getLayers()[0];
+      if (firstLayer.options) {
+        if (firstLayer.options.fillColor) style.fillColor = firstLayer.options.fillColor;
+        if (firstLayer.options.color) style.color = firstLayer.options.color;
+        if (firstLayer.options.weight !== undefined) style.weight = firstLayer.options.weight;
+        if (firstLayer.options.fillOpacity !== undefined) style.fillOpacity = firstLayer.options.fillOpacity;
+        if (firstLayer.options.radius !== undefined) style.radius = firstLayer.options.radius;
+      }
+    }
+  }
+  
+  console.log(`🎨 Estilos extraídos (categorizado: ${style.categorized}):`, style);
+  return style;
+}
+
+// ============================================================================
+// CARGAR CAPAS KML/KMZ EN 3D
+// ============================================================================
+async function loadActiveLayersIn3D() {
+  if (!maplibreMap || !is3DActive) return;
+  
+  console.log('📥 Cargando capas activas en vista 3D...');
+  
+  // Limpiar capas anteriores
+  Object.keys(activeLayersIn3D).forEach(layerId => {
+    const layers = activeLayersIn3D[layerId];
+    if (Array.isArray(layers)) {
+      layers.forEach(id => {
+        if (maplibreMap.getLayer(id)) {
+          try {
+            maplibreMap.removeLayer(id);
+          } catch(e) {
+            console.warn('No se pudo eliminar capa:', id);
+          }
+        }
+      });
+    }
+    if (maplibreMap.getSource(layerId)) {
+      try {
+        maplibreMap.removeSource(layerId);
+      } catch(e) {
+        console.warn('No se pudo eliminar source:', layerId);
+      }
+    }
+  });
+  activeLayersIn3D = {};
+  
+  // Obtener capas del mapa Leaflet
+  let layerCount = 0;
+  let processedLayers = new Set(); // Para evitar duplicados
+  
+  map.eachLayer((layer) => {
+    // Evitar procesar la misma capa dos veces
+    if (processedLayers.has(layer)) return;
+    
+    // Verificar diferentes tipos de capas
+    const hasGeoJSON = layer.toGeoJSON && typeof layer.toGeoJSON === 'function';
+    const hasFeatures = layer._layers && Object.keys(layer._layers).length > 0;
+    const isImageOverlay = layer instanceof L.ImageOverlay;
+    
+    // Procesar capas con GeoJSON
+    if (hasGeoJSON && layer !== map) {
+      try {
+        const geojson = layer.toGeoJSON();
+        
+        // Verificar que el GeoJSON sea válido
+        if (geojson && (geojson.type === 'FeatureCollection' || geojson.type === 'Feature')) {
+          const layerId = `layer-3d-${Date.now()}-${layerCount}`;
+          
+          // Obtener nombre de la capa si existe
+          let nombreCapa = layer.options?.name || layer.options?.title || `Capa ${layerCount + 1}`;
+          
+          // Extraer estilos de la capa Leaflet
+          const leafletStyle = extractLeafletStyle(layer);
+          
+          console.log(`📍 Procesando capa: ${nombreCapa}`);
+          addGeoJSONToMapLibre(layerId, geojson, nombreCapa, leafletStyle);
+          processedLayers.add(layer);
+          layerCount++;
+        }
+      } catch (e) {
+        console.warn('⚠️ No se pudo convertir capa a GeoJSON:', e);
+      }
+    }
+    // Procesar FeatureGroups y LayerGroups (KML/KMZ suelen estar aquí)
+    else if (hasFeatures) {
+      try {
+        Object.values(layer._layers).forEach(subLayer => {
+          if (subLayer.toGeoJSON && !processedLayers.has(subLayer)) {
+            try {
+              const geojson = subLayer.toGeoJSON();
+              if (geojson && (geojson.type === 'FeatureCollection' || geojson.type === 'Feature')) {
+                const layerId = `layer-3d-${Date.now()}-${layerCount}`;
+                let nombreCapa = subLayer.options?.name || subLayer.options?.title || `SubCapa ${layerCount + 1}`;
+                
+                // Extraer estilos de la subcapa Leaflet
+                const leafletStyle = extractLeafletStyle(subLayer);
+                
+                console.log(`📍 Procesando subcapa: ${nombreCapa}`);
+                addGeoJSONToMapLibre(layerId, geojson, nombreCapa, leafletStyle);
+                processedLayers.add(subLayer);
+                layerCount++;
+              }
+            } catch (e) {
+              console.warn('⚠️ Error procesando subcapa:', e);
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('⚠️ Error procesando grupo de capas:', e);
+      }
+    }
+  });
+  
+  if (layerCount > 0) {
+    console.log(`✅ ${layerCount} capa(s) cargada(s) en vista 3D`);
+  } else {
+    console.log('ℹ️ Sin capas para mostrar en vista 3D');
+    console.log('💡 Asegúrate de tener capas KML/KMZ cargadas en el mapa 2D primero');
+  }
+}
+
+// ============================================================================
+// AGREGAR GEOJSON A MAPLIBRE (Optimizado con soporte para capas categorizadas)
+// ============================================================================
+function addGeoJSONToMapLibre(layerId, geojson, nombreCapa, leafletStyle = null) {
+  if (!maplibreMap || !geojson) return;
+  
+  // Usar estilos por defecto si no se proporcionan
+  const style = leafletStyle || {
+    fillColor: '#ff6b6b',
+    fillOpacity: 0.4,
+    color: '#ff0000',
+    weight: 2,
+    opacity: 1,
+    radius: 6,
+    categorized: false
+  };
+  
+  try {
+    // Agregar source con optimizaciones
+    maplibreMap.addSource(layerId, {
+      type: 'geojson',
+      data: geojson,
+      tolerance: 0.5,
+      buffer: 0,
+      lineMetrics: true
+    });
+    
+    // Determinar tipo de geometría
+    const geometryType = geojson.geometry?.type || geojson.features?.[0]?.geometry?.type;
+    
+    console.log(`📍 Agregando capa "${nombreCapa}" tipo: ${geometryType}, categorizada: ${style.categorized}`);
+    
+    // POLÍGONOS
+    if (geometryType === 'Polygon' || geometryType === 'MultiPolygon') {
+      // Si es categorizada, usar expresiones de MapLibre para colorear por propiedad
+      if (style.categorized && style.styleFunction && geojson.features) {
+        // Crear mapeo de colores basado en las features
+        const colorMap = {};
+        geojson.features.forEach(feature => {
+          const featureStyle = style.styleFunction(feature);
+          const key = JSON.stringify(feature.properties);
+          colorMap[key] = featureStyle;
+        });
+        
+        // Crear expresión de color para fill
+        const fillColorExpression = ['match', ['get', 'fill-color-key']];
+        const lineColorExpression = ['match', ['get', 'line-color-key']];
+        
+        // Agregar propiedad de color a cada feature
+        geojson.features.forEach((feature, idx) => {
+          const featureStyle = style.styleFunction(feature);
+          feature.properties['fill-color-key'] = idx;
+          feature.properties['line-color-key'] = idx;
+          fillColorExpression.push(idx, featureStyle.fillColor || featureStyle.color || '#ff6b6b');
+          lineColorExpression.push(idx, featureStyle.color || '#ff0000');
+        });
+        
+        fillColorExpression.push('#ff6b6b'); // default
+        lineColorExpression.push('#ff0000'); // default
+        
+        // Actualizar el source con los datos modificados
+        maplibreMap.getSource(layerId).setData(geojson);
+        
+        // Fill con colores categorizados
+        maplibreMap.addLayer({
+          id: `${layerId}-fill`,
+          type: 'fill',
+          source: layerId,
+          paint: {
+            'fill-color': fillColorExpression,
+            'fill-opacity': style.fillOpacity
+          }
+        });
+        
+        // Outline con colores categorizados
+        maplibreMap.addLayer({
+          id: `${layerId}-outline`,
+          type: 'line',
+          source: layerId,
+          paint: {
+            'line-color': lineColorExpression,
+            'line-width': style.weight,
+            'line-opacity': style.opacity
+          }
+        });
+      } else {
+        // Fill normal
+        maplibreMap.addLayer({
+          id: `${layerId}-fill`,
+          type: 'fill',
+          source: layerId,
+          paint: {
+            'fill-color': style.fillColor,
+            'fill-opacity': style.fillOpacity
+          }
+        });
+        
+        // Outline normal
+        maplibreMap.addLayer({
+          id: `${layerId}-outline`,
+          type: 'line',
+          source: layerId,
+          paint: {
+            'line-color': style.color,
+            'line-width': style.weight,
+            'line-opacity': style.opacity
+          }
+        });
+      }
+      
+      activeLayersIn3D[layerId] = [`${layerId}-fill`, `${layerId}-outline`];
+    }
+    
+    // LÍNEAS
+    else if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
+      maplibreMap.addLayer({
+        id: `${layerId}-line`,
+        type: 'line',
+        source: layerId,
+        paint: {
+          'line-color': style.color,
+          'line-width': style.weight,
+          'line-opacity': style.opacity
+        }
+      });
+      
+      activeLayersIn3D[layerId] = [`${layerId}-line`];
+    }
+    
+    // PUNTOS
+    else if (geometryType === 'Point' || geometryType === 'MultiPoint') {
+      // Si es categorizada y tiene pointToLayer, extraer colores
+      if (style.categorized && (style.styleFunction || style.pointToLayer) && geojson.features) {
+        const colorExpression = ['match', ['get', 'point-color-key']];
+        const strokeExpression = ['match', ['get', 'point-stroke-key']];
+        
+        geojson.features.forEach((feature, idx) => {
+          let featureColor = style.fillColor;
+          let strokeColor = style.color;
+          
+          // Intentar obtener color del styleFunction
+          if (style.styleFunction) {
+            const featureStyle = style.styleFunction(feature);
+            if (featureStyle.fillColor) featureColor = featureStyle.fillColor;
+            if (featureStyle.color) strokeColor = featureStyle.color;
+          }
+          
+          feature.properties['point-color-key'] = idx;
+          feature.properties['point-stroke-key'] = idx;
+          colorExpression.push(idx, featureColor);
+          strokeExpression.push(idx, strokeColor);
+        });
+        
+        colorExpression.push(style.fillColor); // default
+        strokeExpression.push(style.color); // default
+        
+        // Actualizar el source
+        maplibreMap.getSource(layerId).setData(geojson);
+        
+        maplibreMap.addLayer({
+          id: `${layerId}-point`,
+          type: 'circle',
+          source: layerId,
+          paint: {
+            'circle-radius': style.radius,
+            'circle-color': colorExpression,
+            'circle-stroke-width': style.weight,
+            'circle-stroke-color': strokeExpression,
+            'circle-opacity': style.fillOpacity,
+            'circle-stroke-opacity': style.opacity
+          }
+        });
+      } else {
+        maplibreMap.addLayer({
+          id: `${layerId}-point`,
+          type: 'circle',
+          source: layerId,
+          paint: {
+            'circle-radius': style.radius,
+            'circle-color': style.fillColor,
+            'circle-stroke-width': style.weight,
+            'circle-stroke-color': style.color,
+            'circle-opacity': style.fillOpacity,
+            'circle-stroke-opacity': style.opacity
+          }
+        });
+      }
+      
+      activeLayersIn3D[layerId] = [`${layerId}-point`];
+    }
+    
+    console.log(`✅ Capa "${nombreCapa}" agregada a MapLibre (${geometryType}) con simbología preservada`);
+    
+  } catch (error) {
+    console.error(`❌ Error agregando capa "${nombreCapa}":`, error);
+  }
+}
+
+// ============================================================================
+// FUNCIÓN PRINCIPAL: Toggle Vista 3D
+// ============================================================================
+async function toggle3DView() {
+  const cesiumContainer = document.getElementById('cesium-container');
+  const mapContainer = document.getElementById('map');
+  const controls3DPanel = document.getElementById('controls-3d-panel');
+  const toggleBtn = document.getElementById('toggle-3d-btn');
+  const sidebar = document.getElementById('sidebar');
+  const rightToolbar = document.getElementById('right-toolbar');
+  const header = document.getElementById('header');
+  const toggleSidebarContainer = document.getElementById('toggle-sidebar-container');
+  const zoomInicioContainer = document.getElementById('zoom-inicio-container');
+  const transparencyContainer = document.getElementById('transparency-container');
+  const miloMascot = document.getElementById('milo-mascot');
+  const northArrow = document.getElementById('north-arrow-3d');
+  const rotationControls = document.getElementById('rotation-controls-3d');
+  const scale3D = document.getElementById('scale-3d');
+
+  if (!is3DActive) {
+    console.log('🗻 Activando vista de relieve MapLibre...');
+    
+    is3DActive = true;
+    
+    // Ocultar mapa 2D
+    if (mapContainer) mapContainer.style.display = 'none';
+    
+    // Mostrar contenedor 3D
+    if (cesiumContainer) {
+      cesiumContainer.style.display = 'block';
+      cesiumContainer.style.opacity = '1';
+    }
+    
+    // Mostrar panel de controles
+    if (controls3DPanel) {
+      controls3DPanel.style.display = 'block';
+    }
+    
+    // Activar botón
+    if (toggleBtn) {
+      toggleBtn.classList.add('active-3d');
+      toggleBtn.title = 'Volver a Vista 2D';
+    }
+    
+    // OCULTAR TODOS LOS ELEMENTOS DE LA VISTA 2D
+    if (sidebar) sidebar.style.display = 'none';
+    if (rightToolbar) rightToolbar.style.display = 'none';
+    if (header) header.style.display = 'none';
+    if (toggleSidebarContainer) toggleSidebarContainer.style.display = 'none';
+    if (zoomInicioContainer) zoomInicioContainer.style.display = 'none';
+    if (transparencyContainer) transparencyContainer.style.display = 'none';
+    if (miloMascot) miloMascot.style.display = 'none';
+    
+    // MOSTRAR ELEMENTOS EXCLUSIVOS DE VISTA 3D
+    if (northArrow) northArrow.style.display = 'block';
+    if (rotationControls) rotationControls.style.display = 'flex';
+    if (scale3D) scale3D.style.display = 'block';
+    
+    // Mostrar botón "Volver a 2D"
+    const backTo2DBtn = document.getElementById('back-to-2d-btn');
+    if (backTo2DBtn) backTo2DBtn.style.display = 'flex';
+
+    // Inicializar MapLibre si no existe
+    if (!maplibreMap) {
+      try {
+        console.log('🚀 Inicializando MapLibre GL...');
+        
+        if (typeof maplibregl === 'undefined') {
+          throw new Error('MapLibre GL no está cargado. Verifica que las librerías estén en el HTML.');
+        }
+
+        maplibreMap = new maplibregl.Map({
+          container: 'cesium-container',
+          style: {
+            version: 8,
+            sources: {
+              'terrain-rgb': {
+                type: 'raster-dem',
+                tiles: [`https://api.maptiler.com/tiles/terrain-rgb-v2/{z}/{x}/{y}.webp?key=${MAPTILER_KEY}`],
+                tileSize: 256,
+                maxzoom: 14,
+                encoding: 'mapbox'
+              },
+              'satellite': {
+                type: 'raster',
+                tiles: [`https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${MAPTILER_KEY}`],
+                tileSize: 256,
+                maxzoom: 20
+              }
+            },
+            layers: [
+              {
+                id: 'satellite-layer',
+                type: 'raster',
+                source: 'satellite',
+                paint: {
+                  'raster-opacity': 0.6
+                }
+              },
+              {
+                id: 'hillshade',
+                type: 'hillshade',
+                source: 'terrain-rgb',
+                paint: {
+                  'hillshade-exaggeration': 0.8,
+                  'hillshade-shadow-color': '#000000',
+                  'hillshade-accent-color': '#ffffff',
+                  'hillshade-highlight-color': '#ffffff',
+                  'hillshade-illumination-direction': 315
+                }
+              }
+            ],
+            terrain: {
+              source: 'terrain-rgb',
+              exaggeration: 1.5
+            }
+          },
+          center: EDOMEX_CONFIG.center,
+          zoom: 9.5,
+          pitch: 60,
+          bearing: 0, // SIEMPRE AL NORTE
+          maxBounds: EDOMEX_CONFIG.maxBounds, // BOUNDS AMPLIADOS
+          maxPitch: 85,
+          antialias: true,
+          preserveDrawingBuffer: true,
+          optimizeForTerrain: true, // OPTIMIZACIÓN
+          // Mejoras adicionales para renderizado
+          fadeDuration: 300,
+          refreshExpiredTiles: true,
+          renderWorldCopies: false,
+          trackResize: true
+        });
+
+        // Controles nativos de MapLibre
+        maplibreMap.addControl(new maplibregl.NavigationControl({
+          showCompass: true,
+          showZoom: true,
+          visualizePitch: true
+        }), 'top-right');
+
+        // Evento de carga
+        maplibreMap.on('load', () => {
+          console.log('✅ MapLibre cargado exitosamente');
+          
+          // Establecer terreno
+          maplibreMap.setTerrain({
+            source: 'terrain-rgb',
+            exaggeration: 1.5
+          });
+          
+          // Configurar cielo
+          maplibreMap.setSky({
+            'sky-color': '#199EF3',
+            'sky-horizon-blend': 0.5,
+            'horizon-color': '#ffffff',
+            'horizon-fog-blend': 0.5,
+            'fog-color': '#0000ff',
+            'fog-ground-blend': 0.5
+          });
+          
+          // Cargar capas activas del mapa 2D con un pequeño delay para asegurar que todo esté listo
+          setTimeout(() => {
+            loadActiveLayersIn3D();
+            console.log('🔄 Intentando cargar capas KML/KMZ en 3D...');
+            
+            // Hacer zoom a las capas activas después de cargarlas
+            setTimeout(() => {
+              zoomToActiveLayers3D();
+            }, 1000);
+          }, 500);
+          
+          // Agregar evento de clic para mostrar popup con atributos
+          maplibreMap.on('click', (e) => {
+            const features = maplibreMap.queryRenderedFeatures(e.point);
+            
+            console.log('🖱️ Clic en mapa 3D - Features encontradas:', features.length);
+            
+            if (features.length > 0) {
+              const feature = features[0];
+              const properties = feature.properties;
+              
+              console.log('📋 Atributos de la feature:', properties);
+              
+              // Filtrar propiedades técnicas que no deben mostrarse
+              const excludeKeys = [
+                'fill-color-key', 
+                'line-color-key', 
+                'point-color-key', 
+                'point-stroke-key',
+                'geom'
+              ];
+              
+              // Construir contenido del popup con los atributos
+              let popupContent = '<div style="max-width: 350px; font-family: \'Segoe UI\', Arial, sans-serif;">';
+              popupContent += '<h3 style="margin: 0 0 10px 0; color: #8a2035; font-size: 14px; font-weight: 700; border-bottom: 2px solid #b99056; padding-bottom: 5px;">Información del elemento</h3>';
+              
+              let hasVisibleProperties = false;
+              
+              if (properties && Object.keys(properties).length > 0) {
+                // Ordenar propiedades: primero las más importantes
+                const sortedKeys = Object.keys(properties).sort((a, b) => {
+                  const priorityKeys = ['name', 'nombre', 'municipi_1', 'MUNICIPI_1', 'vulner_ri', 'PROYECTO', 'proyecto'];
+                  const aIndex = priorityKeys.indexOf(a);
+                  const bIndex = priorityKeys.indexOf(b);
+                  
+                  if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+                  if (aIndex !== -1) return -1;
+                  if (bIndex !== -1) return 1;
+                  return a.localeCompare(b);
+                });
+                
+                for (const key of sortedKeys) {
+                  const value = properties[key];
+                  
+                  // Filtrar propiedades que no deben mostrarse
+                  if (excludeKeys.includes(key)) continue;
+                  if (value === null || value === undefined || value === '') continue;
+                  
+                  hasVisibleProperties = true;
+                  
+                  // Formatear el nombre de la clave
+                  let displayKey = key;
+                  const keyMap = {
+                    'municipi_1': 'Municipio',
+                    'MUNICIPI_1': 'Municipio',
+                    'vulner_ri': 'Vulnerabilidad',
+                    'PROYECTO': 'Proyecto',
+                    'proyecto': 'Proyecto',
+                    'name': 'Nombre',
+                    'nombre': 'Nombre'
+                  };
+                  
+                  if (keyMap[key]) {
+                    displayKey = keyMap[key];
+                  }
+                  
+                  // Estilo especial para propiedades importantes
+                  const isImportant = ['Municipio', 'Vulnerabilidad', 'Proyecto', 'Nombre'].includes(displayKey);
+                  const valueStyle = isImportant ? 'font-weight: 600; color: #000;' : 'color: #555;';
+                  
+                  popupContent += `
+                    <div style="margin: 8px 0; padding: 6px; background: ${isImportant ? 'rgba(185, 144, 86, 0.1)' : 'transparent'}; border-radius: 4px;">
+                      <strong style="color: #8a2035; font-size: 12px;">${displayKey}:</strong>
+                      <span style="${valueStyle} font-size: 12px; margin-left: 4px;">${value}</span>
+                    </div>
+                  `;
+                }
+              }
+              
+              if (!hasVisibleProperties) {
+                popupContent += '<p style="color: #666; font-size: 12px; text-align: center; padding: 10px;">No hay información adicional disponible</p>';
+              }
+              
+              popupContent += '</div>';
+              
+              // Crear y mostrar popup
+              new maplibregl.Popup({
+                closeButton: true,
+                closeOnClick: true,
+                maxWidth: '400px',
+                className: 'custom-popup-3d'
+              })
+                .setLngLat(e.lngLat)
+                .setHTML(popupContent)
+                .addTo(maplibreMap);
+                
+              console.log('✅ Popup mostrado en coordenadas:', e.lngLat);
+            }
+          });
+          
+          // Cambiar cursor al pasar sobre features clicables
+          maplibreMap.on('mousemove', (e) => {
+            const features = maplibreMap.queryRenderedFeatures(e.point);
+            maplibreMap.getCanvas().style.cursor = features.length > 0 ? 'pointer' : '';
+          });
+          
+          // Actualizar escala cuando cambie el zoom o se mueva el mapa
+          maplibreMap.on('zoom', updateScale3D);
+          maplibreMap.on('move', updateScale3D);
+          
+          // Actualizar escala inicial
+          updateScale3D();
+        });
+
+        maplibreMap.on('error', (e) => {
+          console.error('❌ Error en MapLibre:', e);
+        });
+
+      } catch (error) {
+        console.error('❌ Error al inicializar MapLibre:', error);
+        alert('Error al cargar la vista de relieve. Verifica que MapLibre esté cargado en el HTML.');
+        toggle3DView(); // Volver a 2D
+        return;
+      }
+    } else {
+      // Si ya existe, solo cargar capas y resetear vista
+      loadActiveLayersIn3D();
+      updateMapArea('full');
+    }
+    
+  } else {
+    console.log('🗺️ Volviendo a vista 2D...');
+    
+    is3DActive = false;
+    
+    // Mostrar mapa 2D
+    if (mapContainer) {
+      mapContainer.style.display = 'block';
+      setTimeout(() => {
+        if (map && map.invalidateSize) {
+          map.invalidateSize();
+        }
+      }, 100);
+    }
+    
+    // Ocultar contenedor 3D
+    if (cesiumContainer) {
+      cesiumContainer.style.display = 'none';
+      cesiumContainer.style.opacity = '0';
+    }
+    
+    // Ocultar panel de controles
+    if (controls3DPanel) {
+      controls3DPanel.style.display = 'none';
+    }
+    
+    // Desactivar botón
+    if (toggleBtn) {
+      toggleBtn.classList.remove('active-3d');
+      toggleBtn.title = 'Ver Relieve del Terreno';
+    }
+    
+    // MOSTRAR TODOS LOS ELEMENTOS DE LA VISTA 2D
+    if (sidebar) sidebar.style.display = 'block';
+    if (rightToolbar) rightToolbar.style.display = 'flex';
+    if (header) header.style.display = 'block';
+    if (toggleSidebarContainer) toggleSidebarContainer.style.display = 'block';
+    if (zoomInicioContainer) zoomInicioContainer.style.display = 'block';
+    if (transparencyContainer) transparencyContainer.style.display = 'block';
+    if (miloMascot) miloMascot.style.display = 'block';
+    
+    // OCULTAR ELEMENTOS EXCLUSIVOS DE VISTA 3D
+    const northArrow = document.getElementById('north-arrow-3d');
+    const rotationControls = document.getElementById('rotation-controls-3d');
+    const backTo2DBtn = document.getElementById('back-to-2d-btn');
+    const scale3D = document.getElementById('scale-3d');
+    if (northArrow) northArrow.style.display = 'none';
+    if (rotationControls) rotationControls.style.display = 'none';
+    if (backTo2DBtn) backTo2DBtn.style.display = 'none';
+    if (scale3D) scale3D.style.display = 'none';
+  }
+}
+
+// ============================================================================
+// FUNCIONES DE NAVEGACIÓN Y CONTROL
+// ============================================================================
+
+function updateMapArea(areaKey) {
+  if (!maplibreMap || !is3DActive) return;
+  
+  const area = EDOMEX_AREAS[areaKey];
+  if (!area) return;
+  
+  console.log(`📍 Mostrando área: ${area.name}`);
+  
+  maplibreMap.flyTo({
+    center: area.center,
+    zoom: area.zoom,
+    pitch: area.pitch || 60,
+    bearing: 0, // Siempre al norte
+    duration: 2000,
+    essential: true
+  });
+}
+
+function updateTerrainExaggeration(value) {
+  if (!maplibreMap) return;
+  
+  const exaggeration = parseFloat(value);
+  
+  maplibreMap.setTerrain({
+    source: 'terrain-rgb',
+    exaggeration: exaggeration
+  });
+  
+  const valueDisplay = document.getElementById('exaggeration-value');
+  if (valueDisplay) {
+    valueDisplay.textContent = exaggeration.toFixed(1) + 'x';
+  }
+  
+  console.log(`🗻 Exageración: ${exaggeration}x`);
+}
+
+// Funciones adicionales de navegación
+function rotateCamera(direction) {
+  if (!maplibreMap) return;
+  
+  const currentBearing = maplibreMap.getBearing();
+  const newBearing = direction === 'left' ? currentBearing - 45 : currentBearing + 45;
+  
+  maplibreMap.easeTo({
+    bearing: newBearing,
+    duration: 500
+  });
+}
+
+function tiltCamera(direction) {
+  if (!maplibreMap) return;
+  
+  const currentPitch = maplibreMap.getPitch();
+  let newPitch;
+  
+  if (direction === 'up') {
+    // Inclinar hacia arriba (más cenital)
+    newPitch = Math.max(0, currentPitch - 15);
+  } else {
+    // Inclinar hacia abajo (más horizontal)
+    newPitch = Math.min(85, currentPitch + 15);
+  }
+  
+  maplibreMap.easeTo({
+    pitch: newPitch,
+    duration: 500
+  });
+  
+  console.log(`⬆️⬇️ Pitch ajustado a: ${newPitch}°`);
+}
+
+function resetNorth() {
+  if (!maplibreMap) return;
+  
+  maplibreMap.easeTo({
+    bearing: 0,
+    pitch: 60,
+    duration: 1000
+  });
+}
+
+function groundLevelView() {
+  if (!maplibreMap) return;
+  
+  const currentCenter = maplibreMap.getCenter();
+  
+  maplibreMap.flyTo({
+    center: currentCenter,
+    zoom: 14,
+    pitch: 85,
+    bearing: 0,
+    duration: 2000
+  });
+  
+  console.log('👁️ Vista a nivel del suelo activada');
+}
+
+function aerialView() {
+  if (!maplibreMap) return;
+  
+  const currentCenter = maplibreMap.getCenter();
+  
+  maplibreMap.flyTo({
+    center: currentCenter,
+    zoom: 10,
+    pitch: 0,
+    bearing: 0,
+    duration: 2000
+  });
+}
+
+function moveCamera(direction) {
+  if (!maplibreMap) return;
+  
+  const currentCenter = maplibreMap.getCenter();
+  const moveDistance = 0.05; // ~5km
+  
+  let newLng = currentCenter.lng;
+  let newLat = currentCenter.lat;
+  
+  switch(direction) {
+    case 'north':
+      newLat += moveDistance;
+      break;
+    case 'south':
+      newLat -= moveDistance;
+      break;
+    case 'east':
+      newLng += moveDistance;
+      break;
+    case 'west':
+      newLng -= moveDistance;
+      break;
+  }
+  
+  // Verificar bounds
+  if (newLng >= EDOMEX_CONFIG.maxBounds[0][0] && 
+      newLng <= EDOMEX_CONFIG.maxBounds[1][0] &&
+      newLat >= EDOMEX_CONFIG.maxBounds[0][1] && 
+      newLat <= EDOMEX_CONFIG.maxBounds[1][1]) {
+    
+    maplibreMap.panTo([newLng, newLat], {
+      duration: 500
+    });
+  } else {
+    console.warn('⚠️ Límite del Estado de México alcanzado');
+  }
+}
+
+// ============================================================================
+// FUNCIÓN PARA HACER ZOOM A LAS CAPAS ACTIVAS EN 3D
+// ============================================================================
+function zoomToActiveLayers3D() {
+  if (!maplibreMap || !is3DActive) {
+    console.log('⚠️ No se puede hacer zoom: maplibreMap o is3DActive no están disponibles');
+    return;
+  }
+  
+  console.log('🎯 Iniciando zoom a capas activas...');
+  console.log('📊 Capas activas en 3D:', activeLayersIn3D);
+  
+  try {
+    // Recolectar todas las features de las capas activas
+    let allFeatures = [];
+    
+    for (const layerId in activeLayersIn3D) {
+      const layerIds = activeLayersIn3D[layerId];
+      
+      for (const mlLayerId of layerIds) {
+        const features = maplibreMap.querySourceFeatures(layerId);
+        if (features && features.length > 0) {
+          allFeatures = allFeatures.concat(features);
+          console.log(`📍 Capa "${layerId}" tiene ${features.length} features`);
+        }
+      }
+    }
+    
+    if (allFeatures.length === 0) {
+      console.log('ℹ️ No hay capas activas para hacer zoom');
+      return;
+    }
+    
+    console.log(`📦 Total de features encontradas: ${allFeatures.length}`);
+    
+    // Calcular bounds de todas las features
+    let minLng = Infinity, minLat = Infinity;
+    let maxLng = -Infinity, maxLat = -Infinity;
+    
+    allFeatures.forEach(feature => {
+      if (feature.geometry && feature.geometry.coordinates) {
+        const processCoordinates = (coords) => {
+          if (typeof coords[0] === 'number') {
+            // Es un punto [lng, lat]
+            minLng = Math.min(minLng, coords[0]);
+            maxLng = Math.max(maxLng, coords[0]);
+            minLat = Math.min(minLat, coords[1]);
+            maxLat = Math.max(maxLat, coords[1]);
+          } else {
+            // Es un array de coordenadas
+            coords.forEach(c => processCoordinates(c));
+          }
+        };
+        
+        processCoordinates(feature.geometry.coordinates);
+      }
+    });
+    
+    if (isFinite(minLng) && isFinite(maxLng) && isFinite(minLat) && isFinite(maxLat)) {
+      // Calcular el centro y aplicar zoom
+      const centerLng = (minLng + maxLng) / 2;
+      const centerLat = (minLat + maxLat) / 2;
+      
+      // Calcular un zoom apropiado basado en el tamaño del área
+      const lngDiff = maxLng - minLng;
+      const latDiff = maxLat - minLat;
+      const maxDiff = Math.max(lngDiff, latDiff);
+      
+      let zoom = 10;
+      if (maxDiff < 0.01) zoom = 14;
+      else if (maxDiff < 0.05) zoom = 12;
+      else if (maxDiff < 0.1) zoom = 11;
+      else if (maxDiff < 0.5) zoom = 10;
+      else if (maxDiff < 1) zoom = 9;
+      else zoom = 8;
+      
+      maplibreMap.flyTo({
+        center: [centerLng, centerLat],
+        zoom: zoom,
+        pitch: 60,
+        bearing: 0,
+        duration: 2000,
+        essential: true
+      });
+      
+      console.log(`🎯 Zoom aplicado a capas activas - Centro: [${centerLng.toFixed(4)}, ${centerLat.toFixed(4)}], Zoom: ${zoom}`);
+    }
+  } catch (error) {
+    console.error('❌ Error al hacer zoom a capas activas:', error);
+  }
+}
+
+console.log('🗻 Sistema de relieve MapLibre cargado - Mejoras aplicadas');
+console.log('📦 Configuración del Estado de México lista');
+console.log('✨ Características: KML/KMZ en 3D, Renderizado optimizado, Bounds ampliados, Orientación al norte, Zoom a capas, Popups interactivos, Simbología preservada');
+
+// ============================================================================
+// FUNCIÓN PARA ACTUALIZAR ESCALA GRÁFICA EN 3D
+// ============================================================================
+function updateScale3D() {
+  if (!maplibreMap || !is3DActive) return;
+  
+  const scaleContainer = document.getElementById('scale-3d');
+  if (!scaleContainer) return;
+  
+  // Obtener el zoom actual
+  const zoom = maplibreMap.getZoom();
+  const center = maplibreMap.getCenter();
+  
+  // Calcular la resolución en metros por píxel en el centro del mapa
+  const metersPerPixel = 156543.03392 * Math.cos(center.lat * Math.PI / 180) / Math.pow(2, zoom);
+  
+  // Ancho máximo de la escala en píxeles
+  const maxWidth = 150;
+  
+  // Calcular distancia en metros para el ancho máximo
+  let distance = maxWidth * metersPerPixel;
+  
+  // Ajustar a valores "bonitos"
+  let unit = 'm';
+  if (distance >= 1000) {
+    distance = distance / 1000;
+    unit = 'km';
+  }
+  
+  // Redondear a valores significativos
+  let roundedDistance;
+  if (distance >= 100) {
+    roundedDistance = Math.round(distance / 100) * 100;
+  } else if (distance >= 10) {
+    roundedDistance = Math.round(distance / 10) * 10;
+  } else if (distance >= 1) {
+    roundedDistance = Math.round(distance);
+  } else {
+    roundedDistance = Math.round(distance * 10) / 10;
+  }
+  
+  // Calcular el ancho real de la barra en píxeles
+  const actualWidth = unit === 'km' 
+    ? (roundedDistance * 1000) / metersPerPixel 
+    : roundedDistance / metersPerPixel;
+  
+  // Actualizar el HTML de la escala
+  scaleContainer.innerHTML = `
+    <div style="
+      position: relative;
+      background: rgba(255, 255, 255, 0.85);
+      border: 2px solid #333;
+      border-top: none;
+      width: ${actualWidth}px;
+      height: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    ">
+      <div style="
+        position: absolute;
+        top: -18px;
+        right: 0;
+        font-size: 11px;
+        font-weight: bold;
+        color: #333;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 1px 4px;
+        border-radius: 2px;
+        white-space: nowrap;
+      ">
+        ${roundedDistance} ${unit}
+      </div>
+      <div style="
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 25%;
+        height: 100%;
+        background: #333;
+      "></div>
+      <div style="
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 25%;
+        height: 100%;
+        background: #333;
+      "></div>
+    </div>
+  `;
+}
+
+// ============================================================================
+// FUNCIONALIDAD DE ARRASTRE PARA PANEL DE CONTROLES 3D
+// ============================================================================
+
+(function initDraggablePanel() {
+  const panel = document.getElementById('controls-3d-panel');
+  const header = panel?.querySelector('.controls-3d-header');
+  
+  if (!panel || !header) return;
+  
+  let isDragging = false;
+  let currentX;
+  let currentY;
+  let initialX;
+  let initialY;
+  let xOffset = 0;
+  let yOffset = 0;
+  
+  header.addEventListener('mousedown', dragStart);
+  document.addEventListener('mousemove', drag);
+  document.addEventListener('mouseup', dragEnd);
+  
+  // Touch events para móviles
+  header.addEventListener('touchstart', dragStart);
+  document.addEventListener('touchmove', drag);
+  document.addEventListener('touchend', dragEnd);
+  
+  function dragStart(e) {
+    if (e.type === 'touchstart') {
+      initialX = e.touches[0].clientX - xOffset;
+      initialY = e.touches[0].clientY - yOffset;
+    } else {
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+    }
+    
+    if (e.target === header || header.contains(e.target)) {
+      isDragging = true;
+      panel.style.transition = 'none';
+    }
+  }
+  
+  function drag(e) {
+    if (isDragging) {
+      e.preventDefault();
+      
+      if (e.type === 'touchmove') {
+        currentX = e.touches[0].clientX - initialX;
+        currentY = e.touches[0].clientY - initialY;
+      } else {
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+      }
+      
+      xOffset = currentX;
+      yOffset = currentY;
+      
+      // Limitar el movimiento dentro de la ventana
+      const rect = panel.getBoundingClientRect();
+      const maxX = window.innerWidth - rect.width;
+      const maxY = window.innerHeight - rect.height;
+      
+      xOffset = Math.max(0, Math.min(xOffset, maxX));
+      yOffset = Math.max(0, Math.min(yOffset, maxY));
+      
+      setTranslate(xOffset, yOffset, panel);
+    }
+  }
+  
+  function dragEnd() {
+    if (isDragging) {
+      initialX = currentX;
+      initialY = currentY;
+      isDragging = false;
+      panel.style.transition = '';
+    }
+  }
+  
+  function setTranslate(xPos, yPos, el) {
+    el.style.transform = `translate(${xPos}px, ${yPos}px)`;
+  }
+  
+  console.log('✅ Panel de Controles 3D ahora es arrastrable');
+})();

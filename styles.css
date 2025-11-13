@@ -2562,39 +2562,57 @@
 
     /* ========== ESTILOS PARA LA ESCALA GRÁFICA ========== */
     .leaflet-control-scale {
-      background: rgba(255, 255, 255, 0.75);
-      border: none;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      padding: 8px 10px;
-      font-family: 'Segoe UI', Arial, sans-serif;
-      backdrop-filter: blur(8px);
+      background: rgba(255, 255, 255, 0.9) !important;
+      border: none !important;
+      border-radius: 8px !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+      padding: 8px 10px !important;
+      font-family: 'Segoe UI', Arial, sans-serif !important;
+      backdrop-filter: blur(8px) !important;
       margin-left: 22px !important;
       margin-bottom: 115px !important;
     }
     
     .leaflet-control-scale-line {
-      border: 2px solid #8a2035;
-      border-top: none;
-      border-radius: 0 0 4px 4px;
-      color: #47161D;
-      font-size: 11px;
-      font-weight: 600;
-      line-height: 1.4;
-      padding: 3px 8px;
-      background: linear-gradient(to bottom, 
-        rgba(138, 32, 53, 0.08) 0%, 
-        rgba(255, 255, 255, 0.95) 50%);
-      text-align: center;
-      white-space: nowrap;
-      overflow: visible;
-      box-shadow: inset 0 -1px 3px rgba(138, 32, 53, 0.1);
+      border: 3px solid #8a2035 !important;
+      border-top: none !important;
+      border-radius: 0 !important;
+      color: #8a2035 !important;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      line-height: 1.2 !important;
+      padding: 2px 5px 0px 5px !important;
+      background: transparent !important;
+      text-align: center !important;
+      white-space: nowrap !important;
+      overflow: visible !important;
+      box-shadow: none !important;
+      margin: 0 !important;
+      position: relative !important;
+    }
+    
+    /* Marcas verticales en los extremos de la barra */
+    .leaflet-control-scale-line::before,
+    .leaflet-control-scale-line::after {
+      content: '' !important;
+      position: absolute !important;
+      bottom: -3px !important;
+      width: 3px !important;
+      height: 8px !important;
+      background: #8a2035 !important;
+    }
+    
+    .leaflet-control-scale-line::before {
+      left: -3px !important;
+    }
+    
+    .leaflet-control-scale-line::after {
+      right: -3px !important;
     }
     
     .leaflet-control-scale-line:not(:first-child) {
-      border-top: 2px solid #8a2035;
-      border-bottom: none;
-      margin-top: -2px;
+      margin-top: 6px !important;
+      border-top: 3px solid #8a2035 !important;
     }
 
 
@@ -2641,7 +2659,7 @@
       background: transparent;
       border: none;
       border-radius: 8px;
-      cursor: default;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2661,6 +2679,7 @@
       width: 30px;
       height: 1px;
       background: linear-gradient(to right, transparent, rgba(138, 32, 53, 0.3), transparent);
+      z-index: 1;
     }
 
     .toolbar-btn svg {
@@ -2668,6 +2687,8 @@
       height: 22px;
       fill: #8a2035;
       transition: all 0.2s ease;
+      position: relative;
+      z-index: 2;
     }
 
     /* Asegurar que todos los elementos SVG usen el color institucional */
@@ -2687,38 +2708,15 @@
       transform: scale(0.95);
       background: rgba(138, 32, 53, 0.2);
     }
-
-    /* Tooltip para los botones */
-    .toolbar-btn::before {
-      content: attr(title);
-      position: absolute;
-      right: 55px;
-      background: rgba(138, 32, 53, 0.95);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      white-space: nowrap;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      z-index: 10001;
-      font-weight: 500;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    
+    /* Animación del botón al hover */
+    .toolbar-btn:hover {
+      background: rgba(138, 32, 53, 0.15);
     }
-
-    .toolbar-btn[title]::after {
-      content: '';
-      position: absolute;
-      right: 48px;
-      border: 6px solid transparent;
-      border-left-color: rgba(138, 32, 53, 0.95);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      z-index: 10001;
-      top: 50%;
-      transform: translateY(-50%);
+    
+    .toolbar-btn:hover svg {
+      fill: #b99056;
+      transform: scale(1.1);
     }
 
     /* Estado activo para botones de herramientas */
@@ -3465,3 +3463,714 @@
   color: #666;
   line-height: 1.3;
 }
+
+/* Contenedor de Cesium 3D */
+#cesium-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  display: none;
+}
+
+#cesium-container.active {
+  display: block;
+}
+
+/* Panel de controles 3D */
+#controls-3d-panel {
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  width: 300px;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(15px);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 1001;
+  display: none;
+  border: 2px solid rgba(138, 32, 53, 0.3);
+}
+
+#controls-3d-panel.active {
+  display: block;
+  animation: slideInRight 0.3s ease;
+}
+
+.controls-3d-header {
+  background: linear-gradient(135deg, #8a2035 0%, #6d1a2a 100%);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #b99056;
+  cursor: move;
+  user-select: none;
+}
+
+.controls-3d-header:active {
+  cursor: grabbing;
+}
+
+.controls-3d-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.close-3d-btn {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.close-3d-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.controls-3d-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.control-group-3d {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.control-group-3d label {
+  color: #8a2035;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.control-group-3d input[type="range"] {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #444 0%, #8a2035 50%, #b99056 100%);
+  outline: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.control-group-3d input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #8a2035;
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transition: all 0.2s ease;
+}
+
+.control-group-3d input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px rgba(138, 32, 53, 0.6);
+}
+
+.control-group-3d input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #8a2035;
+  cursor: pointer;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transition: all 0.2s ease;
+}
+
+.control-group-3d input[type="range"]::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 3px 8px rgba(138, 32, 53, 0.6);
+}
+
+.control-group-3d span {
+  color: #666;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.control-group-3d select {
+  width: 100%;
+  padding: 10px;
+  background: white;
+  color: #333;
+  border: 2px solid #8a2035;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.control-group-3d select:hover {
+  border-color: #b99056;
+  box-shadow: 0 2px 8px rgba(138, 32, 53, 0.2);
+}
+
+.control-group-3d select:focus {
+  border-color: #8a2035;
+  box-shadow: 0 0 0 3px rgba(138, 32, 53, 0.1);
+}
+
+/* Estilos para búsqueda de lugares en panel 3D */
+.control-group-3d .places-input-group {
+  position: relative;
+  width: 100%;
+}
+
+.control-group-3d .places-input-group input {
+  width: 100%;
+  padding: 10px 40px 10px 10px;
+  background: white;
+  color: #333;
+  border: 2px solid #8a2035;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.control-group-3d .places-input-group input:focus {
+  border-color: #b99056;
+  box-shadow: 0 0 0 3px rgba(138, 32, 53, 0.1);
+}
+
+.control-group-3d .places-input-group .search-icon {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.control-group-3d .places-loading {
+  padding: 10px;
+  text-align: center;
+  color: #666;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.control-group-3d .places-results {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 5px;
+}
+
+.control-group-3d .place-result-item {
+  padding: 10px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.control-group-3d .place-result-item:hover {
+  background: #f9f9f9;
+  border-color: #b99056;
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(138, 32, 53, 0.1);
+}
+
+.control-group-3d .place-result-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #8a2035;
+  margin-bottom: 3px;
+}
+
+.control-group-3d .place-result-address {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.3;
+}
+
+/* Estilo activo para el botón 3D */
+#toggle-3d-btn.active {
+  background: linear-gradient(135deg, #8a2035 0%, #b99056 100%);
+  color: white;
+}
+
+/* Estilo para el contenedor de relieve con fondo negro */
+#cesium-container.active {
+  background: #000000 !important;
+}
+
+/* Mejorar visibilidad de controles en fondo negro */
+.maplibregl-ctrl-group {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+.maplibregl-ctrl-group button {
+  background: rgba(255, 255, 255, 0.9) !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background: rgba(255, 255, 255, 1) !important;
+}
+
+/* ============================================================================ */
+/* ESTILOS PARA POPUPS DE MAPLIBRE (asegurar visibilidad)                     */
+/* ============================================================================ */
+
+.maplibregl-popup {
+  z-index: 10000 !important;
+  max-width: 400px !important;
+}
+
+.maplibregl-popup-content {
+  background: white !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  padding: 12px 16px !important;
+  border: 2px solid #8a2035 !important;
+  font-family: 'Segoe UI', Arial, sans-serif !important;
+}
+
+.maplibregl-popup-close-button {
+  font-size: 20px !important;
+  color: #8a2035 !important;
+  padding: 4px 8px !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  right: 8px !important;
+  top: 8px !important;
+}
+
+.maplibregl-popup-close-button:hover {
+  color: #6d1a2a !important;
+  background: rgba(138, 32, 53, 0.1) !important;
+  border-radius: 4px !important;
+}
+
+.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: #8a2035 !important;
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: #8a2035 !important;
+}
+
+.maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: #8a2035 !important;
+}
+
+.maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: #8a2035 !important;
+}
+
+/* ============================================================================ */
+/* ESTILOS ADICIONALES PARA MAPLIBRE 3D MEJORADO                              */
+/* Agregado automáticamente - Mantiene todos los estilos anteriores           */
+/* ============================================================================ */
+
+/* Clase para botón 3D activo */
+#toggle-3d-btn.active-3d {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  box-shadow: 0 4px 20px rgba(240, 147, 251, 0.5) !important;
+  transform: scale(1.05);
+}
+
+/* Mejorar controles nativos de MapLibre */
+.maplibregl-ctrl-group {
+  background: rgba(26, 26, 46, 0.95) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+.maplibregl-ctrl-group button {
+  background: transparent !important;
+  color: white !important;
+  border: none !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.maplibregl-ctrl-compass {
+  background-color: transparent !important;
+}
+
+/* ========== ESTILOS PARA LA ESCALA DE MAPLIBRE (igual que Leaflet) ========== */
+.maplibregl-ctrl-scale {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+  padding: 8px 10px !important;
+  font-family: 'Segoe UI', Arial, sans-serif !important;
+  backdrop-filter: blur(8px) !important;
+  margin-left: 22px !important;
+  margin-bottom: 20px !important;
+}
+
+.maplibregl-ctrl-scale div {
+  border: 3px solid #8a2035 !important;
+  border-top: none !important;
+  border-radius: 0 !important;
+  color: #8a2035 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  padding: 2px 5px 0px 5px !important;
+  background: transparent !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  position: relative !important;
+}
+
+/* Marcas verticales en los extremos de la barra */
+.maplibregl-ctrl-scale div::before,
+.maplibregl-ctrl-scale div::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -3px !important;
+  width: 3px !important;
+  height: 8px !important;
+  background: #8a2035 !important;
+}
+
+.maplibregl-ctrl-scale div::before {
+  left: -3px !important;
+}
+
+.maplibregl-ctrl-scale div::after {
+  right: -3px !important;
+}
+
+/* ========== ESTILOS PARA LA ESCALA 3D PERSONALIZADA ========== */
+#scale-3d {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  pointer-events: none;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+
+
+/* Asegurar que el contenedor de Cesium/MapLibre funcione correctamente */
+#cesium-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  z-index: 999;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+#cesium-container.active {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+/* ============================================================================ */
+/* BOTÓN VOLVER A 2D (junto a controles de zoom en vista 3D)                  */
+/* ============================================================================ */
+
+#back-to-2d-btn {
+  position: fixed;
+  top: 20px;
+  right: 100px;  /* Movido más a la izquierda: 20px → 100px */
+  z-index: 10002;
+  background: rgba(138, 32, 53, 0.95);
+  backdrop-filter: blur(10px);
+  border: 2px solid #b99056;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;  /* Gap aumentado de 6px a 8px */
+  white-space: nowrap;  /* Evita que el texto se parta en líneas */
+}
+
+#back-to-2d-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: white;
+  flex-shrink: 0;  /* El icono no se reduce */
+}
+
+#back-to-2d-btn:hover {
+  background: rgba(109, 26, 42, 0.95);
+  border-color: #d4a574;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(138, 32, 53, 0.5);
+}
+
+#back-to-2d-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(138, 32, 53, 0.4);
+}
+
+/* Status message styling (si no existe) */
+.status-success {
+  background: rgba(46, 213, 115, 0.9);
+  color: #1a1a2e;
+}
+
+.status-info {
+  background: rgba(78, 205, 196, 0.9);
+  color: #1a1a2e;
+}
+
+.status-warning {
+  background: rgba(255, 211, 61, 0.9);
+  color: #1a1a2e;
+}
+
+.status-error {
+  background: rgba(255, 71, 87, 0.9);
+  color: white;
+}
+
+/* ============================================================================ */
+/* FIN DE ESTILOS ADICIONALES MAPLIBRE                                         */
+/* ============================================================================ */
+
+/* ============================================================================ */
+
+/* ============================================================================ */
+/* FLECHA DE NORTE (actualizada con colores institucionales)                  */
+/* ============================================================================ */
+
+#north-arrow-3d {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 70px;
+  height: 70px;
+  z-index: 1001;
+  cursor: default;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  animation: fadeIn 0.5s ease;
+}
+
+#north-arrow-3d svg {
+  width: 100%;
+  height: 100%;
+}
+
+#north-arrow-3d circle {
+  fill: rgba(138, 32, 53, 0.95);
+  stroke: #d4a574;
+}
+
+#north-arrow-3d path:first-of-type {
+  fill: #8a2035;
+}
+
+#north-arrow-3d path:last-of-type {
+  fill: #d4a574;
+}
+
+#north-arrow-3d text {
+  fill: #d4a574;
+  font-weight: bold;
+}
+
+/* ============================================================================ */
+/* CONTROLES DE NAVEGACIÓN 3D (50% más pequeño y más transparente)            */
+/* ============================================================================ */
+
+#rotation-controls-3d {
+  position: fixed;
+  bottom: 80px;
+  left: 20px;
+  background: rgba(138, 32, 53, 0.65);  /* Más transparente: 0.85 → 0.65 */
+  backdrop-filter: blur(10px);
+  border: 1.5px solid #d4a574;  /* Borde más delgado */
+  border-radius: 8px;  /* Más pequeño */
+  padding: 8px;  /* Menos padding */
+  z-index: 1001;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+  animation: fadeIn 0.5s ease;
+}
+
+#rotation-controls-3d h4 {
+  margin: 0 0 6px 0;
+  color: #d4a574;
+  font-size: 11px;  /* 14px → 11px */
+  text-align: center;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+.nav-3d-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 28px);  /* 45px → 28px (aprox 62%) */
+  grid-template-rows: repeat(3, 28px);
+  gap: 4px;  /* 6px → 4px */
+}
+
+.nav-3d-btn {
+  background: linear-gradient(135deg, #8a2035 0%, #721a2d 100%);
+  border: 1px solid #d4a574;
+  border-radius: 5px;  /* 6px → 5px */
+  padding: 0;
+  color: #d4a574;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;  /* 45px → 28px */
+  height: 28px;
+  box-shadow: 0 2px 6px rgba(138, 32, 53, 0.4);
+}
+
+.nav-3d-btn svg {
+  width: 16px;  /* 22px → 16px */
+  height: 16px;
+  color: #d4a574;
+}
+
+.nav-3d-btn:hover {
+  background: linear-gradient(135deg, #b99056 0%, #d4a574 100%);
+  color: #8a2035;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(185, 144, 86, 0.6);
+  border-color: #8a2035;
+}
+
+.nav-3d-btn:hover svg {
+  color: #8a2035;
+}
+
+.nav-3d-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(138, 32, 53, 0.4);
+}
+
+/* Botón central (Norte) - destacado */
+.nav-3d-btn.nav-3d-center {
+  background: linear-gradient(135deg, #b99056 0%, #d4a574 100%);
+  border-color: #8a2035;
+  box-shadow: 0 3px 10px rgba(185, 144, 86, 0.5);
+}
+
+.nav-3d-btn.nav-3d-center svg {
+  color: #8a2035;
+}
+
+.nav-3d-btn.nav-3d-center:hover {
+  background: linear-gradient(135deg, #d4a574 0%, #b99056 100%);
+  box-shadow: 0 5px 15px rgba(185, 144, 86, 0.7);
+}
+
+/* Botón de vista a nivel del suelo - especial */
+.nav-3d-btn.nav-3d-ground {
+  background: linear-gradient(135deg, #6d1a2a 0%, #8a2035 100%);
+  border-color: #b99056;
+  grid-column: 3;
+}
+
+.nav-3d-btn.nav-3d-ground:hover {
+  background: linear-gradient(135deg, #b99056 0%, #6d1a2a 100%);
+  border-color: #d4a574;
+}
+
+/* Espaciador para la grid */
+.nav-3d-spacer {
+  width: 28px;  /* 45px → 28px */
+  height: 28px;
+}
+
+/* Animación de entrada */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #north-arrow-3d {
+    width: 55px;
+    height: 55px;
+    top: 15px;
+    left: 15px;
+  }
+  
+  #rotation-controls-3d {
+    bottom: 70px;
+    left: 15px;
+    padding: 6px;
+  }
+  
+  .nav-3d-grid {
+    grid-template-columns: repeat(3, 30px);
+    grid-template-rows: repeat(3, 30px);
+    gap: 3px;
+  }
+  
+  .nav-3d-btn,
+  .nav-3d-spacer {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .nav-3d-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* ============================================================================ */
+/* FIN DE ESTILOS PARA NAVEGACIÓN 3D                                          */
+/* ============================================================================ */
