@@ -38,7 +38,11 @@ const nombresCapas = {
   'riesgo de inundacion': 'Riesgo de Inundación',
   'rios y arroyos': 'Ríos y Arroyos',
   // Programa Operativo Anual 2025
-  'caem-dgig-fise-052-25-cp': 'CAEM-DGIG-FISE-052-25-CP'
+  'caem-dgig-fise-052-25-cp': 'FISE 052-25 CP',
+  'caem-dgig-fise-053-25-cp': 'FISE 053-25 CP',
+  'caem-dgig-fise-054-25-cp': 'FISE 054-25 CP',
+  'caem-dgig-fise-055-25-cp': 'FISE 055-25 CP',
+  'caem-dgig-fise-056-25-cp': 'FISE 056-25 CP'
 };
 
 let supabaseUrl = '';
@@ -528,8 +532,16 @@ function updateSymbology() {
       const firstFeature = layer.getLayers()[0];
       const props = firstFeature.feature ? firstFeature.feature.properties : {};
       
-      // Para la capa caem-dgig-fise-052-25-cp, buscar campo Avance
-      if (layerName === 'caem-dgig-fise-052-25-cp') {
+      // Para las capas FISE, buscar campo Avance
+      const capasFISE = [
+        'caem-dgig-fise-052-25-cp', 
+        'caem-dgig-fise-053-25-cp',
+        'caem-dgig-fise-054-25-cp',
+        'caem-dgig-fise-055-25-cp',
+        'caem-dgig-fise-056-25-cp'
+      ];
+      
+      if (capasFISE.includes(layerName)) {
         if (props.hasOwnProperty('Avance')) {
           fieldName = 'Avance';
         } else if (props.hasOwnProperty('avance')) {
@@ -1424,7 +1436,11 @@ async function conectar() {
       'riesgo de inundacion',
       'rios y arroyos',
       // Programa Operativo Anual 2025
-      'caem-dgig-fise-052-25-cp'
+      'caem-dgig-fise-052-25-cp',
+      'caem-dgig-fise-053-25-cp',
+      'caem-dgig-fise-054-25-cp',
+      'caem-dgig-fise-055-25-cp',
+      'caem-dgig-fise-056-25-cp'
       // Agrega aquí más tablas según las vayas creando en Supabase
     ];
     
@@ -1522,6 +1538,14 @@ async function conectar() {
             color = '#9C27B0'; // Morado para regiones
           } else if (tbl === 'caem-dgig-fise-052-25-cp') {
             color = '#E91E63'; // Rosa fuerte para FISE 052-25 CP
+          } else if (tbl === 'caem-dgig-fise-053-25-cp') {
+            color = '#E91E63'; // Rosa fuerte para FISE 053-25 CP
+          } else if (tbl === 'caem-dgig-fise-054-25-cp') {
+            color = '#E91E63'; // Rosa fuerte para FISE 054-25 CP
+          } else if (tbl === 'caem-dgig-fise-055-25-cp') {
+            color = '#E91E63'; // Rosa fuerte para FISE 055-25 CP
+          } else if (tbl === 'caem-dgig-fise-056-25-cp') {
+            color = '#E91E63'; // Rosa fuerte para FISE 056-25 CP
           } else {
             color = colores[colorIdx % colores.length];
             colorIdx++;
@@ -1700,7 +1724,13 @@ function mostrarCapas() {
     contentDiv.className = 'layers-group-content collapsed';
     
     // Separar capas FISE de otras capas POA
-    const capasFISE = ['caem-dgig-fise-052-25-cp'];
+    const capasFISE = [
+      'caem-dgig-fise-052-25-cp', 
+      'caem-dgig-fise-053-25-cp',
+      'caem-dgig-fise-054-25-cp',
+      'caem-dgig-fise-055-25-cp',
+      'caem-dgig-fise-056-25-cp'
+    ];
     const otrasCapasPOA = programaOperativo2025.filter(nombre => !capasFISE.includes(nombre));
     
     // Agregar capas POA que NO son FISE
@@ -1711,7 +1741,12 @@ function mostrarCapas() {
     }
     
     // Crear submenú FISE - buscar directamente en capasConfig
-    if (capasConfig['caem-dgig-fise-052-25-cp']) {
+    const tieneFISE = capasConfig['caem-dgig-fise-052-25-cp'] || 
+                      capasConfig['caem-dgig-fise-053-25-cp'] ||
+                      capasConfig['caem-dgig-fise-054-25-cp'] ||
+                      capasConfig['caem-dgig-fise-055-25-cp'] ||
+                      capasConfig['caem-dgig-fise-056-25-cp'];
+    if (tieneFISE) {
       // Crear subgrupo para FISE con el mismo estilo que el grupo principal
       const subgroupDiv = document.createElement('div');
       subgroupDiv.className = 'layers-group layers-subgroup-poa';
@@ -1724,8 +1759,12 @@ function mostrarCapas() {
       const subContentDiv = document.createElement('div');
       subContentDiv.className = 'layers-group-content collapsed';
       
-      // Agregar la capa FISE
-      subContentDiv.appendChild(createLayerItem('caem-dgig-fise-052-25-cp', nombresCapas['caem-dgig-fise-052-25-cp'] || 'caem-dgig-fise-052-25-cp'));
+      // Agregar las capas FISE que existan
+      capasFISE.forEach(nombreFISE => {
+        if (capasConfig[nombreFISE]) {
+          subContentDiv.appendChild(createLayerItem(nombreFISE, nombresCapas[nombreFISE] || nombreFISE));
+        }
+      });
       
       subgroupDiv.appendChild(subTitleDiv);
       subgroupDiv.appendChild(subContentDiv);
@@ -1733,7 +1772,7 @@ function mostrarCapas() {
     }
     
     // Si no hay ninguna capa
-    if (programaOperativo2025.length === 0 && !capasConfig['caem-dgig-fise-052-25-cp']) {
+    if (programaOperativo2025.length === 0 && !tieneFISE) {
       const emptyMsg = document.createElement('div');
       emptyMsg.style.padding = '10px';
       emptyMsg.style.color = '#999';
@@ -1802,7 +1841,13 @@ function createLayerItem(nombre, nombreDisplay) {
   const div = document.createElement('div');
   
   // Verificar si es una capa del Programa Operativo Anual 2025
-  const capasPOA2025 = ['caem-dgig-fise-052-25-cp'];
+  const capasPOA2025 = [
+    'caem-dgig-fise-052-25-cp', 
+    'caem-dgig-fise-053-25-cp',
+    'caem-dgig-fise-054-25-cp',
+    'caem-dgig-fise-055-25-cp',
+    'caem-dgig-fise-056-25-cp'
+  ];
   const esPOA2025 = capasPOA2025.includes(nombre);
   
   if (esPOA2025) {
@@ -1936,7 +1981,13 @@ async function toggleCapa(nombre, activar) {
     console.log(`🎯 Última capa activada: ${nombre}`);
     
     // Definir capas del POA 2025
-    const capasPOA2025 = ['caem-dgig-fise-052-25-cp'];
+    const capasPOA2025 = [
+      'caem-dgig-fise-052-25-cp', 
+      'caem-dgig-fise-053-25-cp',
+      'caem-dgig-fise-054-25-cp',
+      'caem-dgig-fise-055-25-cp',
+      'caem-dgig-fise-056-25-cp'
+    ];
     
     if (capasPOA2025.includes(nombre)) {
       // Si es una capa del POA 2025, abrir la tabla de atributos
@@ -1975,7 +2026,13 @@ async function toggleCapa(nombre, activar) {
       }
       
       // Si es una capa del POA 2025, cerrar la tabla de atributos
-      const capasPOA2025 = ['caem-dgig-fise-052-25-cp'];
+      const capasPOA2025 = [
+        'caem-dgig-fise-052-25-cp', 
+        'caem-dgig-fise-053-25-cp',
+        'caem-dgig-fise-054-25-cp',
+        'caem-dgig-fise-055-25-cp',
+        'caem-dgig-fise-056-25-cp'
+      ];
       if (capasPOA2025.includes(nombre)) {
         closePOAAttributesPanel();
       }
@@ -2866,15 +2923,23 @@ async function cargarCapa(nombre) {
           let fillColor = config.color;
           let strokeColor = '#ffffff';
           
-          // Configuración especial para caem-dgig-fise-052-25-cp basada en campo Avance
-          if (nombre === 'caem-dgig-fise-052-25-cp') {
+          // Configuración especial para capas FISE basada en campo Avance
+          const capasFISE = [
+            'caem-dgig-fise-052-25-cp', 
+            'caem-dgig-fise-053-25-cp',
+            'caem-dgig-fise-054-25-cp',
+            'caem-dgig-fise-055-25-cp',
+            'caem-dgig-fise-056-25-cp'
+          ];
+          
+          if (capasFISE.includes(nombre)) {
             const avance = feature.properties.Avance || feature.properties.avance || feature.properties.AVANCE;
             if (avance === 'SI' || avance === 'Si' || avance === 'si') {
-              fillColor = '#FF0000'; // Rojo para SI
-              strokeColor = '#8B0000'; // Rojo oscuro para el borde
+              fillColor = '#e31a1cff'; // Rojo para SI
+              strokeColor = '#e31a1cff'; // Rojo oscuro para el borde
             } else if (avance === 'NO' || avance === 'No' || avance === 'no') {
-              fillColor = '#000000'; // Negro para NO
-              strokeColor = '#000000'; // Negro para el borde
+              fillColor = '#e3c745ff'; // Negro para NO
+              strokeColor = '#e3c745ff'; // Negro para el borde
             }
           }
           
@@ -2882,7 +2947,7 @@ async function cargarCapa(nombre) {
             radius: 7,
             fillColor: fillColor,
             color: strokeColor,
-            weight: nombre === 'caem-dgig-fise-052-25-cp' ? 4 : 2,
+            weight: capasFISE.includes(nombre) ? 4 : 2,
             opacity: 1,
             fillOpacity: 0.9
           });
@@ -2891,21 +2956,29 @@ async function cargarCapa(nombre) {
           let fillColor = config.color;
           let strokeColor = '#ffffff';
           
-          // Configuración especial para caem-dgig-fise-052-25-cp basada en campo Avance
-          if (nombre === 'caem-dgig-fise-052-25-cp') {
+          // Configuración especial para capas FISE basada en campo Avance
+          const capasFISE = [
+            'caem-dgig-fise-052-25-cp', 
+            'caem-dgig-fise-053-25-cp',
+            'caem-dgig-fise-054-25-cp',
+            'caem-dgig-fise-055-25-cp',
+            'caem-dgig-fise-056-25-cp'
+          ];
+          
+          if (capasFISE.includes(nombre)) {
             const avance = feature.properties.Avance || feature.properties.avance || feature.properties.AVANCE;
             if (avance === 'SI' || avance === 'Si' || avance === 'si') {
-              fillColor = '#FF0000'; // Rojo para SI
-              strokeColor = '#8B0000'; // Rojo oscuro para el borde
+              fillColor = '#e31a1cff'; // Rojo para SI
+              strokeColor = '#e31a1cff'; // Rojo oscuro para el borde
             } else if (avance === 'NO' || avance === 'No' || avance === 'no') {
-              fillColor = '#000000'; // Negro para NO
-              strokeColor = '#000000'; // Negro para el borde
+              fillColor = '#e3c745ff'; // Negro para NO
+              strokeColor = '#e3c745ff'; // Negro para el borde
             }
           }
           
           return {
             color: strokeColor,
-            weight: nombre === 'caem-dgig-fise-052-25-cp' ? 4 : 2,
+            weight: capasFISE.includes(nombre) ? 4 : 2,
             opacity: 1,
             fillColor: fillColor,
             fillOpacity: 0.9
