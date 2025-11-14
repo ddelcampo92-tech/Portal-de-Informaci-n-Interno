@@ -38,12 +38,7 @@ const nombresCapas = {
   'riesgo de inundacion': 'Riesgo de Inundación',
   'rios y arroyos': 'Ríos y Arroyos',
   // Programa Operativo Anual 2025
-  'fid1928': 'FID 1928',
-  'fise': 'FISE',
-  'gasto_corriente': 'Gasto Corriente',
-  'gidem': 'GIDEM',
-  'proagua': 'PROAGUA',
-  'prodder': 'PRODDER'
+  'caem-dgig-fise-052-25-cp': 'CAEM-DGIG-FISE-052-25-CP'
 };
 
 let supabaseUrl = '';
@@ -514,17 +509,13 @@ function updateSymbology() {
   };
   
   // Definir capas del Programa Operativo Anual 2025
+  // NOTA: Las capas POA 2025 NO se muestran en la ventana de simbología
   const programaOperativo2025 = {
-    'fid1928': 'tipo',
-    'fise': 'tipo',
-    'gasto_corriente': 'tipo',
-    'gidem': 'tipo',
-    'proagua': 'tipo',
-    'prodder': 'tipo'
+    // 'caem-dgig-fise-052-25-cp': 'Avance'  // Deshabilitado para no aparecer en simbología
   };
   
-  // Combinar todas las capas para la simbología
-  const capasParaSimbologia = {...inventarioCAEM, ...inundaciones, ...contextoGeografico, ...programaOperativo2025};
+  // Combinar todas las capas para la simbología (SIN incluir POA 2025)
+  const capasParaSimbologia = {...inventarioCAEM, ...inundaciones, ...contextoGeografico};
   
   // Función auxiliar para procesar una capa y obtener su HTML
   function processLayer(layerName, fieldName) {
@@ -532,13 +523,23 @@ function updateSymbology() {
     const displayName = nombresCapas[layerName] || layerName;
     const totalFeatures = layer && layer.getLayers ? layer.getLayers().length : 0;
     
-    // PRIORIZAR EL CAMPO "tipo", "temp_lluv" o "PROYECTO" SI EXISTE (en diferentes variaciones)
+    // PRIORIZAR EL CAMPO "tipo", "temp_lluv", "PROYECTO" o "Avance" SI EXISTE (en diferentes variaciones)
     if (layer && layer.getLayers && layer.getLayers().length > 0) {
       const firstFeature = layer.getLayers()[0];
       const props = firstFeature.feature ? firstFeature.feature.properties : {};
       
+      // Para la capa caem-dgig-fise-052-25-cp, buscar campo Avance
+      if (layerName === 'caem-dgig-fise-052-25-cp') {
+        if (props.hasOwnProperty('Avance')) {
+          fieldName = 'Avance';
+        } else if (props.hasOwnProperty('avance')) {
+          fieldName = 'avance';
+        } else if (props.hasOwnProperty('AVANCE')) {
+          fieldName = 'AVANCE';
+        }
+      }
       // Buscar el campo TIPO en diferentes variaciones
-      if (props.hasOwnProperty('TIPO')) {
+      else if (props.hasOwnProperty('TIPO')) {
         fieldName = 'TIPO';
       } else if (props.hasOwnProperty('tipo')) {
         fieldName = 'tipo';
@@ -1423,12 +1424,7 @@ async function conectar() {
       'riesgo de inundacion',
       'rios y arroyos',
       // Programa Operativo Anual 2025
-      'fid1928',
-      'fise',
-      'gasto_corriente',
-      'gidem',
-      'proagua',
-      'prodder'
+      'caem-dgig-fise-052-25-cp'
       // Agrega aquí más tablas según las vayas creando en Supabase
     ];
     
@@ -1524,18 +1520,8 @@ async function conectar() {
             color = '#8a2035'; // Vino para municipios
           } else if (tbl.includes('regiones')) {
             color = '#9C27B0'; // Morado para regiones
-          } else if (tbl === 'fid1928') {
-            color = '#FF6B35'; // Naranja rojizo para FID1928
-          } else if (tbl === 'fise') {
-            color = '#F7931E'; // Naranja para FISE
-          } else if (tbl === 'gasto_corriente') {
-            color = '#FFC107'; // Amarillo para Gasto Corriente
-          } else if (tbl === 'gidem') {
-            color = '#8BC34A'; // Verde lima para GIDEM
-          } else if (tbl === 'proagua') {
-            color = '#00BCD4'; // Cian para PROAGUA
-          } else if (tbl === 'prodder') {
-            color = '#3F51B5'; // Índigo para PRODDER
+          } else if (tbl === 'caem-dgig-fise-052-25-cp') {
+            color = '#E91E63'; // Rosa fuerte para FISE 052-25 CP
           } else {
             color = colores[colorIdx % colores.length];
             colorIdx++;
@@ -1643,12 +1629,7 @@ function mostrarCapas() {
   ];
   
   const ordenProgramaOperativo2025 = [
-    'fid1928',
-    'fise',
-    'gasto_corriente',
-    'gidem',
-    'proagua',
-    'prodder'
+    // 'caem-dgig-fise-052-25-cp' se maneja en un submenú FISE
   ];
   
   // Filtrar capas que existen en el orden definido
@@ -1718,12 +1699,41 @@ function mostrarCapas() {
     const contentDiv = document.createElement('div');
     contentDiv.className = 'layers-group-content collapsed';
     
-    if (programaOperativo2025.length > 0) {
-      programaOperativo2025.forEach(nombre => {
+    // Separar capas FISE de otras capas POA
+    const capasFISE = ['caem-dgig-fise-052-25-cp'];
+    const otrasCapasPOA = programaOperativo2025.filter(nombre => !capasFISE.includes(nombre));
+    
+    // Agregar capas POA que NO son FISE
+    if (otrasCapasPOA.length > 0) {
+      otrasCapasPOA.forEach(nombre => {
         contentDiv.appendChild(createLayerItem(nombre, nombresCapas[nombre] || nombre));
       });
-    } else {
-      // Mostrar mensaje si no hay capas
+    }
+    
+    // Crear submenú FISE - buscar directamente en capasConfig
+    if (capasConfig['caem-dgig-fise-052-25-cp']) {
+      // Crear subgrupo para FISE con el mismo estilo que el grupo principal
+      const subgroupDiv = document.createElement('div');
+      subgroupDiv.className = 'layers-group layers-subgroup-poa';
+      
+      const subTitleDiv = document.createElement('div');
+      subTitleDiv.className = 'layers-group-title';
+      subTitleDiv.innerHTML = '<span style="padding-left: 15px;">FISE</span><span class="layers-group-toggle collapsed">▼</span>';
+      subTitleDiv.onclick = () => toggleLayerGroup(subTitleDiv.nextElementSibling, subTitleDiv.querySelector('.layers-group-toggle'));
+      
+      const subContentDiv = document.createElement('div');
+      subContentDiv.className = 'layers-group-content collapsed';
+      
+      // Agregar la capa FISE
+      subContentDiv.appendChild(createLayerItem('caem-dgig-fise-052-25-cp', nombresCapas['caem-dgig-fise-052-25-cp'] || 'caem-dgig-fise-052-25-cp'));
+      
+      subgroupDiv.appendChild(subTitleDiv);
+      subgroupDiv.appendChild(subContentDiv);
+      contentDiv.appendChild(subgroupDiv);
+    }
+    
+    // Si no hay ninguna capa
+    if (programaOperativo2025.length === 0 && !capasConfig['caem-dgig-fise-052-25-cp']) {
       const emptyMsg = document.createElement('div');
       emptyMsg.style.padding = '10px';
       emptyMsg.style.color = '#999';
@@ -1792,7 +1802,7 @@ function createLayerItem(nombre, nombreDisplay) {
   const div = document.createElement('div');
   
   // Verificar si es una capa del Programa Operativo Anual 2025
-  const capasPOA2025 = ['fid1928', 'fise', 'gasto_corriente', 'gidem', 'proagua', 'prodder'];
+  const capasPOA2025 = ['caem-dgig-fise-052-25-cp'];
   const esPOA2025 = capasPOA2025.includes(nombre);
   
   if (esPOA2025) {
@@ -1812,7 +1822,7 @@ function createLayerItem(nombre, nombreDisplay) {
             <span class="poa-layer-name">${nombreDisplay || nombre}</span>
             ${isEmpty ? '<span class="poa-empty-badge">(vacía)</span>' : ''}
           </label>
-          <div class="poa-layer-count" id="poa-count-${nombre}">Cargando...</div>
+          <div class="poa-layer-count" id="poa-count-${nombre}"></div>
         </div>
         <div class="poa-layer-actions">
           <button class="poa-expand-btn" id="poa-expand-${nombre}" onclick="togglePOAObjectsList('${nombre}')" title="Ver objetos" disabled>
@@ -1925,8 +1935,16 @@ async function toggleCapa(nombre, activar) {
     ultimaCapaActivada = nombre; // Rastrear la última capa activada
     console.log(`🎯 Última capa activada: ${nombre}`);
     
-    // Abrir automáticamente la ventana de simbología
-    openSymbologyModal();
+    // Definir capas del POA 2025
+    const capasPOA2025 = ['caem-dgig-fise-052-25-cp'];
+    
+    if (capasPOA2025.includes(nombre)) {
+      // Si es una capa del POA 2025, abrir la tabla de atributos
+      openPOAAttributesPanel(nombre);
+    } else {
+      // Si NO es una capa del POA 2025, abrir la ventana de simbología
+      openSymbologyModal();
+    }
   } else {
     if (capasActivas[nombre]) {
       // Si es la capa de regiones, eliminar las etiquetas PRIMERO
@@ -1955,6 +1973,12 @@ async function toggleCapa(nombre, activar) {
         const capasActivasArray = Object.keys(capasActivas);
         ultimaCapaActivada = capasActivasArray.length > 0 ? capasActivasArray[capasActivasArray.length - 1] : null;
       }
+      
+      // Si es una capa del POA 2025, cerrar la tabla de atributos
+      const capasPOA2025 = ['caem-dgig-fise-052-25-cp'];
+      if (capasPOA2025.includes(nombre)) {
+        closePOAAttributesPanel();
+      }
     }
     
     // Actualizar la simbología si la ventana está abierta
@@ -1972,8 +1996,8 @@ async function toggleCapa(nombre, activar) {
         'atlas temporada 2023', 'atlas temporada 2024',
         'cuerpos de agua', 'curvas de nivel', 'estadomex', 'estadomex_geojson',
         'municipios', 'municipios_geojson', 'regiones', 'regiones_geojson',
-        'riesgo de inundacion', 'rios y arroyos',
-        'fid1928', 'fise', 'gasto_corriente', 'gidem', 'proagua', 'prodder'
+        'riesgo de inundacion', 'rios y arroyos'
+        // Las capas del POA 2025 no aparecen en simbología
       ];
       
       const hasSymbologyLayers = Object.keys(capasActivas).some(name => 
@@ -2839,22 +2863,54 @@ async function cargarCapa(nombre) {
     else {
       const geoJsonLayer = L.geoJSON(null, {
         pointToLayer: (feature, latlng) => {
+          let fillColor = config.color;
+          let strokeColor = '#ffffff';
+          
+          // Configuración especial para caem-dgig-fise-052-25-cp basada en campo Avance
+          if (nombre === 'caem-dgig-fise-052-25-cp') {
+            const avance = feature.properties.Avance || feature.properties.avance || feature.properties.AVANCE;
+            if (avance === 'SI' || avance === 'Si' || avance === 'si') {
+              fillColor = '#FF0000'; // Rojo para SI
+              strokeColor = '#8B0000'; // Rojo oscuro para el borde
+            } else if (avance === 'NO' || avance === 'No' || avance === 'no') {
+              fillColor = '#000000'; // Negro para NO
+              strokeColor = '#000000'; // Negro para el borde
+            }
+          }
+          
           return L.circleMarker(latlng, {
             radius: 7,
-            fillColor: config.color,
-            color: '#ffffff',
-            weight: 2,
+            fillColor: fillColor,
+            color: strokeColor,
+            weight: nombre === 'caem-dgig-fise-052-25-cp' ? 4 : 2,
             opacity: 1,
-            fillOpacity: 1
+            fillOpacity: 0.9
           });
         },
-        style: () => ({
-          color: '#ffffff',
-          weight: 2,
-          opacity: 1,
-          fillColor: config.color,
-          fillOpacity: 1
-        }),
+        style: (feature) => {
+          let fillColor = config.color;
+          let strokeColor = '#ffffff';
+          
+          // Configuración especial para caem-dgig-fise-052-25-cp basada en campo Avance
+          if (nombre === 'caem-dgig-fise-052-25-cp') {
+            const avance = feature.properties.Avance || feature.properties.avance || feature.properties.AVANCE;
+            if (avance === 'SI' || avance === 'Si' || avance === 'si') {
+              fillColor = '#FF0000'; // Rojo para SI
+              strokeColor = '#8B0000'; // Rojo oscuro para el borde
+            } else if (avance === 'NO' || avance === 'No' || avance === 'no') {
+              fillColor = '#000000'; // Negro para NO
+              strokeColor = '#000000'; // Negro para el borde
+            }
+          }
+          
+          return {
+            color: strokeColor,
+            weight: nombre === 'caem-dgig-fise-052-25-cp' ? 4 : 2,
+            opacity: 1,
+            fillColor: fillColor,
+            fillOpacity: 0.9
+          };
+        },
         onEachFeature: (feature, layer) => {
           const props = feature.properties;
           let popup = '<b>' + nombre + '</b><br>';
@@ -5994,3 +6050,134 @@ function updateScale3D() {
   
   console.log('✅ Panel de Controles 3D ahora es arrastrable');
 })();
+
+// ============================================================================
+// FUNCIONES PARA TABLA DE ATRIBUTOS POA 2025
+// ============================================================================
+
+function openPOAAttributesPanel(nombre) {
+  const panel = document.getElementById('poa-attributes-panel');
+  const content = document.getElementById('poa-attributes-content');
+  
+  // Obtener los datos de la capa
+  const layer = capasActivas[nombre];
+  if (!layer || !layer.getLayers) {
+    console.error('No se pudo encontrar la capa:', nombre);
+    return;
+  }
+  
+  const features = layer.getLayers();
+  const displayName = nombresCapas[nombre] || nombre;
+  
+  // Generar HTML de la tabla
+  let html = `<div class="poa-attributes-layer-name">${displayName}</div>`;
+  
+  if (features.length === 0) {
+    html += '<div class="poa-attributes-empty">No hay datos disponibles</div>';
+  } else {
+    // Obtener las propiedades del primer feature
+    const firstFeature = features[0];
+    const firstProps = firstFeature.feature.properties;
+    const columns = Object.keys(firstProps).filter(key => 
+      key !== 'geom' && 
+      key !== 'avance' && 
+      key !== 'Avance' && 
+      key !== 'AVANCE' && 
+      key !== 'gid' && 
+      key !== 'Gid' && 
+      key !== 'GID'
+    );
+    
+    if (columns.length === 0) {
+      html += '<div class="poa-attributes-empty">No hay atributos para mostrar</div>';
+    } else {
+      // Tabla con encabezados verticales (cada fila es un atributo)
+      html += '<table class="poa-attributes-table poa-attributes-table-vertical">';
+      html += '<tbody>';
+      
+      // Cada fila muestra: Nombre del campo | Valor
+      columns.forEach(col => {
+        const value = firstProps[col] !== null && firstProps[col] !== undefined ? firstProps[col] : '-';
+        html += '<tr>';
+        html += `<th>${col}</th>`;
+        html += `<td>${value}</td>`;
+        html += '</tr>';
+      });
+      
+      html += '</tbody></table>';
+    }
+  }
+  
+  content.innerHTML = html;
+  panel.classList.add('show');
+  
+  // Hacer el panel arrastrable
+  initPOAAttributesDrag();
+}
+
+function closePOAAttributesPanel() {
+  const panel = document.getElementById('poa-attributes-panel');
+  panel.classList.remove('show');
+}
+
+// Variables para el arrastre del panel de atributos
+let poaAttrDragging = false;
+let poaAttrCurrentX;
+let poaAttrCurrentY;
+let poaAttrInitialX;
+let poaAttrInitialY;
+let poaAttrXOffset = 0;
+let poaAttrYOffset = 0;
+
+function initPOAAttributesDrag() {
+  const panel = document.getElementById('poa-attributes-panel');
+  const header = panel.querySelector('.poa-attributes-header');
+  
+  if (!header) return;
+  
+  // Remover listeners anteriores si existen
+  header.removeEventListener('mousedown', poaAttrDragStart);
+  document.removeEventListener('mousemove', poaAttrDrag);
+  document.removeEventListener('mouseup', poaAttrDragEnd);
+  
+  // Agregar nuevos listeners
+  header.addEventListener('mousedown', poaAttrDragStart);
+  document.addEventListener('mousemove', poaAttrDrag);
+  document.addEventListener('mouseup', poaAttrDragEnd);
+}
+
+function poaAttrDragStart(e) {
+  poaAttrInitialX = e.clientX - poaAttrXOffset;
+  poaAttrInitialY = e.clientY - poaAttrYOffset;
+  
+  const header = document.querySelector('.poa-attributes-header');
+  if (e.target === header || header.contains(e.target)) {
+    poaAttrDragging = true;
+  }
+}
+
+function poaAttrDrag(e) {
+  if (poaAttrDragging) {
+    e.preventDefault();
+    
+    poaAttrCurrentX = e.clientX - poaAttrInitialX;
+    poaAttrCurrentY = e.clientY - poaAttrInitialY;
+    
+    poaAttrXOffset = poaAttrCurrentX;
+    poaAttrYOffset = poaAttrCurrentY;
+    
+    const panel = document.getElementById('poa-attributes-panel');
+    panel.style.transform = `translate(${poaAttrCurrentX}px, ${poaAttrCurrentY}px)`;
+  }
+}
+
+function poaAttrDragEnd() {
+  if (poaAttrDragging) {
+    poaAttrInitialX = poaAttrCurrentX;
+    poaAttrInitialY = poaAttrCurrentY;
+    poaAttrDragging = false;
+  }
+}
+
+console.log('✅ Sistema de tabla de atributos POA 2025 cargado');
+
