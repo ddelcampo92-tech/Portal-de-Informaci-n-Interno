@@ -6168,8 +6168,44 @@ function openPOAAttributesPanel(nombre) {
   const features = layer.getLayers();
   const displayName = nombresCapas[nombre] || nombre;
   
+  // Verificar si es una capa FISE para agregar simbología
+  const capasFISE = [
+    'caem-dgig-fise-052-25-cp', 
+    'caem-dgig-fise-053-25-cp',
+    'caem-dgig-fise-054-25-cp',
+    'caem-dgig-fise-055-25-cp',
+    'caem-dgig-fise-056-25-cp'
+  ];
+  const esFISE = capasFISE.includes(nombre);
+  
   // Generar HTML de la tabla
   let html = `<div class="poa-attributes-layer-name">${displayName}</div>`;
+  
+  // Agregar simbología solo para capas FISE
+  if (esFISE) {
+    html += `
+      <div style="display: flex; gap: 10px; margin: 8px 0; padding: 6px; background-color: #f9f9f9; border-radius: 4px; font-size: 10px; justify-content: center; align-items: center;">
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <svg width="15" height="2" style="display: block;">
+            <line x1="0" y1="1" x2="15" y2="1" stroke="#e31a1cff" stroke-width="2"/>
+          </svg>
+          <span style="color: #333; font-weight: 500;">Terminado</span>
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <svg width="15" height="2" style="display: block;">
+            <line x1="0" y1="1" x2="15" y2="1" stroke="#e3c745ff" stroke-width="2"/>
+          </svg>
+          <span style="color: #333; font-weight: 500;">Pendiente</span>
+        </span>
+        <span style="display: flex; align-items: center; gap: 4px;">
+          <svg width="15" height="2" style="display: block;">
+            <line x1="0" y1="1" x2="15" y2="1" stroke="#53d130ff" stroke-width="2" stroke-dasharray="2,1"/>
+          </svg>
+          <span style="color: #333; font-weight: 500;">En proceso</span>
+        </span>
+      </div>
+    `;
+  }
   
   if (features.length === 0) {
     html += '<div class="poa-attributes-empty">No hay datos disponibles</div>';
