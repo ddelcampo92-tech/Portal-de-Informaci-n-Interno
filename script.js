@@ -2938,19 +2938,32 @@ async function cargarCapa(nombre) {
               fillColor = '#e31a1cff'; // Rojo para SI
               strokeColor = '#e31a1cff'; // Rojo oscuro para el borde
             } else if (avance === 'NO' || avance === 'No' || avance === 'no') {
-              fillColor = '#e3c745ff'; // Negro para NO
-              strokeColor = '#e3c745ff'; // Negro para el borde
+              fillColor = '#e3c745ff'; // Amarillo para NO
+              strokeColor = '#e3c745ff'; // Amarillo para el borde
+            } else if (avance === 'En proceso' || avance === 'en proceso' || avance === 'EN PROCESO') {
+              fillColor = '#53d130ff'; // Verde para En proceso
+              strokeColor = '#53d130ff'; // Verde para el borde
             }
           }
           
-          return L.circleMarker(latlng, {
+          const markerOptions = {
             radius: 7,
             fillColor: fillColor,
             color: strokeColor,
             weight: capasFISE.includes(nombre) ? 4 : 2,
             opacity: 1,
             fillOpacity: 0.9
-          });
+          };
+          
+          // Agregar línea punteada para "En proceso"
+          if (capasFISE.includes(nombre)) {
+            const avance = feature.properties.Avance || feature.properties.avance || feature.properties.AVANCE;
+            if (avance === 'En proceso' || avance === 'en proceso' || avance === 'EN PROCESO') {
+              markerOptions.dashArray = '5, 5';
+            }
+          }
+          
+          return L.circleMarker(latlng, markerOptions);
         },
         style: (feature) => {
           let fillColor = config.color;
@@ -2971,18 +2984,31 @@ async function cargarCapa(nombre) {
               fillColor = '#e31a1cff'; // Rojo para SI
               strokeColor = '#e31a1cff'; // Rojo oscuro para el borde
             } else if (avance === 'NO' || avance === 'No' || avance === 'no') {
-              fillColor = '#e3c745ff'; // Negro para NO
-              strokeColor = '#e3c745ff'; // Negro para el borde
+              fillColor = '#e3c745ff'; // Amarillo para NO
+              strokeColor = '#e3c745ff'; // Amarillo para el borde
+            } else if (avance === 'En proceso' || avance === 'en proceso' || avance === 'EN PROCESO') {
+              fillColor = '#53d130ff'; // Verde para En proceso
+              strokeColor = '#53d130ff'; // Verde para el borde
             }
           }
           
-          return {
+          const styleOptions = {
             color: strokeColor,
             weight: capasFISE.includes(nombre) ? 4 : 2,
             opacity: 1,
             fillColor: fillColor,
             fillOpacity: 0.9
           };
+          
+          // Agregar línea punteada para "En proceso"
+          if (capasFISE.includes(nombre)) {
+            const avance = feature.properties.Avance || feature.properties.avance || feature.properties.AVANCE;
+            if (avance === 'En proceso' || avance === 'en proceso' || avance === 'EN PROCESO') {
+              styleOptions.dashArray = '5, 5';
+            }
+          }
+          
+          return styleOptions;
         },
         onEachFeature: (feature, layer) => {
           const props = feature.properties;
