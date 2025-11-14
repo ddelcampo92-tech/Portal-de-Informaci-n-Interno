@@ -36,7 +36,14 @@ const nombresCapas = {
   'regiones': 'Regionalización',
   'regiones_geojson': 'Regionalización (GeoJSON)',
   'riesgo de inundacion': 'Riesgo de Inundación',
-  'rios y arroyos': 'Ríos y Arroyos'
+  'rios y arroyos': 'Ríos y Arroyos',
+  // Programa Operativo Anual 2025
+  'fid1928': 'FID 1928',
+  'fise': 'FISE',
+  'gasto_corriente': 'Gasto Corriente',
+  'gidem': 'GIDEM',
+  'proagua': 'PROAGUA',
+  'prodder': 'PRODDER'
 };
 
 let supabaseUrl = '';
@@ -141,8 +148,21 @@ function changeBasemap(type) {
   
   currentBasemap.addTo(map);
   
+  // Actualizar clases active en todos los paneles de mapa base
   document.querySelectorAll('.basemap-btn').forEach(btn => btn.classList.remove('active'));
-  event.target.classList.add('active');
+  document.querySelectorAll('.basemap-option').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.basemap-option-right').forEach(btn => btn.classList.remove('active'));
+  
+  // Agregar clase active al botón correspondiente del tipo seleccionado
+  const rightBtn = document.getElementById(`basemap-${type}-right`);
+  if (rightBtn) {
+    rightBtn.classList.add('active');
+  }
+  
+  const floatBtn = document.getElementById(`basemap-${type}`);
+  if (floatBtn) {
+    floatBtn.classList.add('active');
+  }
 }
 
 function reprojectGeometry(geom) {
@@ -493,8 +513,18 @@ function updateSymbology() {
     'rios y arroyos': 'nombre'  // Mostrar por nombre
   };
   
+  // Definir capas del Programa Operativo Anual 2025
+  const programaOperativo2025 = {
+    'fid1928': 'tipo',
+    'fise': 'tipo',
+    'gasto_corriente': 'tipo',
+    'gidem': 'tipo',
+    'proagua': 'tipo',
+    'prodder': 'tipo'
+  };
+  
   // Combinar todas las capas para la simbología
-  const capasParaSimbologia = {...inventarioCAEM, ...inundaciones, ...contextoGeografico};
+  const capasParaSimbologia = {...inventarioCAEM, ...inundaciones, ...contextoGeografico, ...programaOperativo2025};
   
   // Función auxiliar para procesar una capa y obtener su HTML
   function processLayer(layerName, fieldName) {
@@ -654,10 +684,11 @@ function updateSymbology() {
   
   let html = '';
   
-  // Crear secciones separadas para Inventario CAEM, Inundaciones y Contexto Geográfico
+  // Crear secciones separadas para Inventario CAEM, Inundaciones, Contexto Geográfico y Programa Operativo Anual
   const inventarioActiveLayers = activeInventoryLayers.filter(name => inventarioCAEM[name]);
   const inundacionesActiveLayers = activeInventoryLayers.filter(name => inundaciones[name]);
   const contextoActiveLayers = activeInventoryLayers.filter(name => contextoGeografico[name]);
+  const programaOperativoActiveLayers = activeInventoryLayers.filter(name => programaOperativo2025[name]);
   
   // Sección Inventario CAEM
   if (inventarioActiveLayers.length > 0) {
@@ -704,6 +735,23 @@ function updateSymbology() {
     html += `<div class="symbology-section-title">Contexto Geográfico <span class="symbology-section-count">(${totalContexto})</span></div>`;
     
     contextoActiveLayers.forEach(layerName => {
+      html += processLayer(layerName, capasParaSimbologia[layerName]);
+    });
+    
+    html += `</div>`;
+  }
+  
+  // Sección Programa Operativo Anual 2025
+  if (programaOperativoActiveLayers.length > 0) {
+    const totalPOA = programaOperativoActiveLayers.reduce((sum, layerName) => {
+      const layer = capasActivas[layerName];
+      return sum + (layer && layer.getLayers ? layer.getLayers().length : 0);
+    }, 0);
+    
+    html += `<div class="symbology-section">`;
+    html += `<div class="symbology-section-title">Programa Operativo Anual (2025) <span class="symbology-section-count">(${totalPOA})</span></div>`;
+    
+    programaOperativoActiveLayers.forEach(layerName => {
       html += processLayer(layerName, capasParaSimbologia[layerName]);
     });
     
@@ -1373,7 +1421,14 @@ async function conectar() {
       'regiones',
       'regiones_geojson',
       'riesgo de inundacion',
-      'rios y arroyos'
+      'rios y arroyos',
+      // Programa Operativo Anual 2025
+      'fid1928',
+      'fise',
+      'gasto_corriente',
+      'gidem',
+      'proagua',
+      'prodder'
       // Agrega aquí más tablas según las vayas creando en Supabase
     ];
     
@@ -1469,6 +1524,18 @@ async function conectar() {
             color = '#8a2035'; // Vino para municipios
           } else if (tbl.includes('regiones')) {
             color = '#9C27B0'; // Morado para regiones
+          } else if (tbl === 'fid1928') {
+            color = '#FF6B35'; // Naranja rojizo para FID1928
+          } else if (tbl === 'fise') {
+            color = '#F7931E'; // Naranja para FISE
+          } else if (tbl === 'gasto_corriente') {
+            color = '#FFC107'; // Amarillo para Gasto Corriente
+          } else if (tbl === 'gidem') {
+            color = '#8BC34A'; // Verde lima para GIDEM
+          } else if (tbl === 'proagua') {
+            color = '#00BCD4'; // Cian para PROAGUA
+          } else if (tbl === 'prodder') {
+            color = '#3F51B5'; // Índigo para PRODDER
           } else {
             color = colores[colorIdx % colores.length];
             colorIdx++;
@@ -1575,13 +1642,36 @@ function mostrarCapas() {
     'estadomex_geojson'
   ];
   
+  const ordenProgramaOperativo2025 = [
+    'fid1928',
+    'fise',
+    'gasto_corriente',
+    'gidem',
+    'proagua',
+    'prodder'
+  ];
+  
   // Filtrar capas que existen en el orden definido
   const inundaciones = ordenInundaciones.filter(nombre => capasConfig[nombre]);
   const inventarioCAEM = ordenInventarioCAEM.filter(nombre => capasConfig[nombre]);
   const contextoGeografico = ordenContextoGeografico.filter(nombre => capasConfig[nombre]);
   
-  // Identificar las capas que NO están en ninguno de los tres grupos anteriores
-  const capasEnGrupos = [...ordenInundaciones, ...ordenInventarioCAEM, ...ordenContextoGeografico];
+  // Buscar las capas del POA 2025 con depuración detallada
+  const programaOperativo2025 = ordenProgramaOperativo2025.filter(nombre => {
+    const existe = capasConfig[nombre];
+    console.log(`Buscando capa "${nombre}":`, existe ? '✅ ENCONTRADA' : '❌ NO ENCONTRADA');
+    if (existe) {
+      console.log(`  - Configuración de "${nombre}":`, capasConfig[nombre]);
+    }
+    return existe;
+  });
+  
+  console.log('🔍 Capas del Programa Operativo 2025 buscadas:', ordenProgramaOperativo2025);
+  console.log('✅ Capas del Programa Operativo 2025 encontradas:', programaOperativo2025);
+  console.log('📋 Todas las capas disponibles en capasConfig:', Object.keys(capasConfig));
+  
+  // Identificar las capas que NO están en ninguno de los cuatro grupos anteriores
+  const capasEnGrupos = [...ordenInundaciones, ...ordenInventarioCAEM, ...ordenContextoGeografico, ...ordenProgramaOperativo2025];
   const otrasCapas = capasDisponibles.filter(nombre => !capasEnGrupos.includes(nombre));
   
   // Crear grupo Inventario CAEM (incluye capas predefinidas + capas nuevas automáticamente)
@@ -1608,6 +1698,39 @@ function mostrarCapas() {
       otrasCapas.sort().forEach(nombre => {
         contentDiv.appendChild(createLayerItem(nombre, nombresCapas[nombre] || nombre));
       });
+    }
+    
+    groupDiv.appendChild(titleDiv);
+    groupDiv.appendChild(contentDiv);
+    layersDiv.appendChild(groupDiv);
+  }
+  
+  // Crear grupo Programa Operativo Anual 2025 (siempre mostrar, aunque esté vacío)
+  {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'layers-group';
+    
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'layers-group-title';
+    titleDiv.innerHTML = '<span>Programa Operativo Anual <span style="font-size: 11px; color: #b99056; font-weight: normal;">(2025)</span></span><span class="layers-group-toggle collapsed">▼</span>';
+    titleDiv.onclick = () => toggleLayerGroup(titleDiv.nextElementSibling, titleDiv.querySelector('.layers-group-toggle'));
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'layers-group-content collapsed';
+    
+    if (programaOperativo2025.length > 0) {
+      programaOperativo2025.forEach(nombre => {
+        contentDiv.appendChild(createLayerItem(nombre, nombresCapas[nombre] || nombre));
+      });
+    } else {
+      // Mostrar mensaje si no hay capas
+      const emptyMsg = document.createElement('div');
+      emptyMsg.style.padding = '10px';
+      emptyMsg.style.color = '#999';
+      emptyMsg.style.fontSize = '12px';
+      emptyMsg.style.fontStyle = 'italic';
+      emptyMsg.textContent = 'No hay capas disponibles';
+      contentDiv.appendChild(emptyMsg);
     }
     
     groupDiv.appendChild(titleDiv);
@@ -1667,56 +1790,131 @@ function toggleLayerGroup(contentDiv, toggleIcon) {
 
 function createLayerItem(nombre, nombreDisplay) {
   const div = document.createElement('div');
-  div.className = 'layer-item';
   
-  const checkbox = document.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.id = `layer_${nombre}`;
-  checkbox.onchange = () => toggleCapa(nombre, checkbox.checked);
+  // Verificar si es una capa del Programa Operativo Anual 2025
+  const capasPOA2025 = ['fid1928', 'fise', 'gasto_corriente', 'gidem', 'proagua', 'prodder'];
+  const esPOA2025 = capasPOA2025.includes(nombre);
   
-  const label = document.createElement('label');
-  label.textContent = nombreDisplay || nombre;
-  label.htmlFor = `layer_${nombre}`;
-  
-  // Agregar indicador si la capa está vacía
-  if (capasConfig[nombre] && !capasConfig[nombre].hasData) {
-    const emptyBadge = document.createElement('span');
-    emptyBadge.textContent = ' (vacía)';
-    emptyBadge.style.color = '#ff6b6b';
-    emptyBadge.style.fontSize = '10px';
-    emptyBadge.style.fontWeight = 'normal';
-    label.appendChild(emptyBadge);
-    checkbox.disabled = true;
-    checkbox.title = 'Esta capa no contiene datos';
+  if (esPOA2025) {
+    // Estructura similar a KML para capas POA 2025
+    div.className = 'poa-layer-item';
+    div.id = `poa-layer-${nombre}`;
+    
+    // Agregar indicador si la capa está vacía
+    const isEmpty = capasConfig[nombre] && !capasConfig[nombre].hasData;
+    
+    // Contar objetos anticipadamente (se actualizará cuando se cargue)
+    div.innerHTML = `
+      <div class="poa-layer-header">
+        <div class="poa-layer-info">
+          <label class="poa-layer-checkbox">
+            <input type="checkbox" id="layer_${nombre}" ${isEmpty ? 'disabled' : ''}>
+            <span class="poa-layer-name">${nombreDisplay || nombre}</span>
+            ${isEmpty ? '<span class="poa-empty-badge">(vacía)</span>' : ''}
+          </label>
+          <div class="poa-layer-count" id="poa-count-${nombre}">Cargando...</div>
+        </div>
+        <div class="poa-layer-actions">
+          <button class="poa-expand-btn" id="poa-expand-${nombre}" onclick="togglePOAObjectsList('${nombre}')" title="Ver objetos" disabled>
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#b99056">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </button>
+          <button class="poa-action-btn" onclick="zoomToCapa('${nombre}')" title="Zoom a capa" id="poa-zoom-${nombre}">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              <path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="poa-objects-list" id="poa-objects-${nombre}">
+        <!-- Los objetos se agregarán dinámicamente aquí -->
+      </div>
+    `;
+    
+    // Agregar evento al checkbox
+    const checkbox = div.querySelector(`#layer_${nombre}`);
+    checkbox.onchange = async () => {
+      await toggleCapa(nombre, checkbox.checked);
+      if (checkbox.checked) {
+        updatePOAObjectsList(nombre);
+      } else {
+        // Limpiar la lista cuando se desactiva
+        const objectsList = document.getElementById(`poa-objects-${nombre}`);
+        if (objectsList) {
+          objectsList.innerHTML = '';
+          objectsList.classList.remove('expanded');
+        }
+        const expandBtn = document.getElementById(`poa-expand-${nombre}`);
+        if (expandBtn) {
+          expandBtn.disabled = true;
+          expandBtn.classList.remove('expanded');
+        }
+      }
+    };
+    
+    // Cargar el conteo de objetos inmediatamente
+    if (!isEmpty) {
+      loadPOAObjectCount(nombre);
+    } else {
+      const countElement = document.getElementById(`poa-count-${nombre}`);
+      if (countElement) countElement.textContent = '0 objeto(s)';
+    }
+    
+  } else {
+    // Estructura estándar para otras capas
+    div.className = 'layer-item';
+    
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `layer_${nombre}`;
+    checkbox.onchange = () => toggleCapa(nombre, checkbox.checked);
+    
+    const label = document.createElement('label');
+    label.textContent = nombreDisplay || nombre;
+    label.htmlFor = `layer_${nombre}`;
+    
+    // Agregar indicador si la capa está vacía
+    if (capasConfig[nombre] && !capasConfig[nombre].hasData) {
+      const emptyBadge = document.createElement('span');
+      emptyBadge.textContent = ' (vacía)';
+      emptyBadge.style.color = '#ff6b6b';
+      emptyBadge.style.fontSize = '10px';
+      emptyBadge.style.fontWeight = 'normal';
+      label.appendChild(emptyBadge);
+      checkbox.disabled = true;
+      checkbox.title = 'Esta capa no contiene datos';
+    }
+    
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'layer-actions';
+    
+    const zoomBtn = document.createElement('button');
+    zoomBtn.className = 'zoom-btn';
+    zoomBtn.innerHTML = '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="14" fill="none" stroke="#b99056" stroke-width="3"/><line x1="34" y1="34" x2="46" y2="46" stroke="#b99056" stroke-width="4" stroke-linecap="round"/><line x1="24" y1="18" x2="24" y2="30" stroke="#b99056" stroke-width="2.5"/><line x1="18" y1="24" x2="30" y2="24" stroke="#b99056" stroke-width="2.5"/></svg>';
+    zoomBtn.title = `Zoom a ${nombreDisplay || nombre}`;
+    zoomBtn.onclick = (e) => {
+      e.stopPropagation();
+      zoomToCapa(nombre);
+    };
+    
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'download-btn';
+    downloadBtn.innerHTML = '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M32 8 L32 40 M20 28 L32 40 L44 28" stroke="#b99056" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="48" width="40" height="6" rx="2" fill="#b99056"/></svg>';
+    downloadBtn.title = `Descargar ${nombreDisplay || nombre}`;
+    downloadBtn.onclick = (e) => {
+      e.stopPropagation();
+      descargarCapa(nombre);
+    };
+    
+    actionsDiv.appendChild(zoomBtn);
+    actionsDiv.appendChild(downloadBtn);
+    
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    div.appendChild(actionsDiv);
   }
-  
-  const actionsDiv = document.createElement('div');
-  actionsDiv.className = 'layer-actions';
-  
-  const zoomBtn = document.createElement('button');
-  zoomBtn.className = 'zoom-btn';
-  zoomBtn.innerHTML = '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="14" fill="none" stroke="#b99056" stroke-width="3"/><line x1="34" y1="34" x2="46" y2="46" stroke="#b99056" stroke-width="4" stroke-linecap="round"/><line x1="24" y1="18" x2="24" y2="30" stroke="#b99056" stroke-width="2.5"/><line x1="18" y1="24" x2="30" y2="24" stroke="#b99056" stroke-width="2.5"/></svg>';
-  zoomBtn.title = `Zoom a ${nombreDisplay || nombre}`;
-  zoomBtn.onclick = (e) => {
-    e.stopPropagation();
-    zoomToCapa(nombre);
-  };
-  
-  const downloadBtn = document.createElement('button');
-  downloadBtn.className = 'download-btn';
-  downloadBtn.innerHTML = '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M32 8 L32 40 M20 28 L32 40 L44 28" stroke="#b99056" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="48" width="40" height="6" rx="2" fill="#b99056"/></svg>';
-  downloadBtn.title = `Descargar ${nombreDisplay || nombre}`;
-  downloadBtn.onclick = (e) => {
-    e.stopPropagation();
-    descargarCapa(nombre);
-  };
-  
-  actionsDiv.appendChild(zoomBtn);
-  actionsDiv.appendChild(downloadBtn);
-  
-  div.appendChild(checkbox);
-  div.appendChild(label);
-  div.appendChild(actionsDiv);
   
   return div;
 }
@@ -1774,7 +1972,8 @@ async function toggleCapa(nombre, activar) {
         'atlas temporada 2023', 'atlas temporada 2024',
         'cuerpos de agua', 'curvas de nivel', 'estadomex', 'estadomex_geojson',
         'municipios', 'municipios_geojson', 'regiones', 'regiones_geojson',
-        'riesgo de inundacion', 'rios y arroyos'
+        'riesgo de inundacion', 'rios y arroyos',
+        'fid1928', 'fise', 'gasto_corriente', 'gidem', 'proagua', 'prodder'
       ];
       
       const hasSymbologyLayers = Object.keys(capasActivas).some(name => 
@@ -2850,6 +3049,219 @@ async function descargarCapa(nombre) {
   }
 }
 
+// Función para cargar el conteo de objetos POA antes de activar la capa
+async function loadPOAObjectCount(nombre) {
+  try {
+    const config = capasConfig[nombre];
+    if (!config) return;
+    
+    // Hacer una consulta rápida solo para contar con filtro de Cartera
+    const countUrl = `${supabaseUrl}/rest/v1/${encodeURIComponent(nombre)}?select=*&limit=1000`;
+    
+    const res = await fetch(countUrl, {
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (res.ok) {
+      const data = await res.json();
+      // Contar cuántos tienen campo Cartera
+      const countWithCartera = data.filter(item => 
+        item.Cartera || item.cartera || item.CARTERA
+      ).length;
+      
+      const countElement = document.getElementById(`poa-count-${nombre}`);
+      if (countElement) {
+        countElement.textContent = `${countWithCartera} objeto(s)`;
+      }
+      
+      // Habilitar botón expandir si hay objetos
+      const expandBtn = document.getElementById(`poa-expand-${nombre}`);
+      if (expandBtn && countWithCartera > 0) {
+        expandBtn.disabled = false;
+      }
+    }
+  } catch (err) {
+    console.error(`Error cargando conteo de ${nombre}:`, err);
+    const countElement = document.getElementById(`poa-count-${nombre}`);
+    if (countElement) {
+      countElement.textContent = '0 objeto(s)';
+    }
+  }
+}
+
+// Función para actualizar la lista de objetos POA cuando se activa una capa
+function updatePOAObjectsList(nombre) {
+  if (!capasActivas[nombre]) return;
+  
+  const layer = capasActivas[nombre];
+  const features = layer.getLayers();
+  
+  // Actualizar contador
+  const countElement = document.getElementById(`poa-count-${nombre}`);
+  
+  // Filtrar objetos con campo "Cartera"
+  const featuresConCartera = features.filter(feature => {
+    const props = feature.feature.properties;
+    return props && (props.Cartera || props.cartera || props.CARTERA);
+  });
+  
+  if (countElement) {
+    countElement.textContent = `${featuresConCartera.length} objeto(s)`;
+  }
+  
+  // Habilitar botón expandir
+  const expandBtn = document.getElementById(`poa-expand-${nombre}`);
+  if (expandBtn && featuresConCartera.length > 0) {
+    expandBtn.disabled = false;
+  }
+  
+  if (featuresConCartera.length === 0) return;
+  
+  // Crear lista de objetos
+  const objectsList = document.getElementById(`poa-objects-${nombre}`);
+  if (!objectsList) return;
+  
+  objectsList.innerHTML = '';
+  
+  featuresConCartera.forEach((feature, index) => {
+    const props = feature.feature.properties;
+    const cartera = props.Cartera || props.cartera || props.CARTERA;
+    
+    const objectItem = document.createElement('div');
+    objectItem.className = 'poa-object-item';
+    objectItem.id = `poa-object-${nombre}-${index}`;
+    objectItem.innerHTML = `
+      <div class="poa-object-name" title="${cartera}">${cartera}</div>
+      <div class="poa-object-actions">
+        <button class="poa-object-hide-btn" onclick="hidePOAObject('${nombre}', ${index})" title="Ocultar objeto">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+            <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.804 11.804 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
+          </svg>
+        </button>
+        <button class="poa-object-zoom-btn" onclick="zoomToPOAObject('${nombre}', ${index})" title="Zoom">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            <path d="M12 10h-2v2H9v-2H7V9h2V7h1v2h2v1z"/>
+          </svg>
+        </button>
+      </div>
+    `;
+    objectsList.appendChild(objectItem);
+  });
+}
+
+// Función para ocultar un objeto individual del POA
+window.hidePOAObject = function(nombre, index) {
+  const layer = capasActivas[nombre];
+  if (!layer) return;
+  
+  const features = layer.getLayers();
+  const featuresConCartera = features.filter(feature => {
+    const props = feature.feature.properties;
+    return props && (props.Cartera || props.cartera || props.CARTERA);
+  });
+  
+  if (featuresConCartera[index]) {
+    const feature = featuresConCartera[index];
+    
+    // Alternar visibilidad
+    if (map.hasLayer(feature)) {
+      map.removeLayer(feature);
+      // Cambiar estilo del item
+      const objectItem = document.getElementById(`poa-object-${nombre}-${index}`);
+      if (objectItem) {
+        objectItem.classList.add('hidden');
+        // Cambiar icono a "mostrar"
+        const hideBtn = objectItem.querySelector('.poa-object-hide-btn');
+        if (hideBtn) {
+          hideBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            </svg>
+          `;
+          hideBtn.title = 'Mostrar objeto';
+        }
+      }
+    } else {
+      map.addLayer(feature);
+      // Restaurar estilo
+      const objectItem = document.getElementById(`poa-object-${nombre}-${index}`);
+      if (objectItem) {
+        objectItem.classList.remove('hidden');
+        // Cambiar icono a "ocultar"
+        const hideBtn = objectItem.querySelector('.poa-object-hide-btn');
+        if (hideBtn) {
+          hideBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#8a2035">
+              <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46A11.804 11.804 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>
+            </svg>
+          `;
+          hideBtn.title = 'Ocultar objeto';
+        }
+      }
+    }
+  }
+};
+
+// Función para expandir/colapsar la lista de objetos POA
+window.togglePOAObjectsList = function(nombre) {
+  const objectsList = document.getElementById(`poa-objects-${nombre}`);
+  const expandBtn = document.getElementById(`poa-expand-${nombre}`);
+  
+  if (objectsList && expandBtn) {
+    objectsList.classList.toggle('expanded');
+    expandBtn.classList.toggle('expanded');
+  }
+};
+
+// Función para hacer zoom a un objeto específico del POA
+window.zoomToPOAObject = function(nombre, index) {
+  const layer = capasActivas[nombre];
+  if (!layer) return;
+  
+  const features = layer.getLayers();
+  const featuresConCartera = features.filter(feature => {
+    const props = feature.feature.properties;
+    return props && (props.Cartera || props.cartera || props.CARTERA);
+  });
+  
+  if (featuresConCartera[index]) {
+    const feature = featuresConCartera[index];
+    
+    try {
+      // Intentar obtener bounds (funciona para polígonos y líneas)
+      if (feature.getBounds) {
+        const bounds = feature.getBounds();
+        map.fitBounds(bounds, { padding: [50, 50] });
+      } 
+      // Si es un punto (marker o circleMarker)
+      else if (feature.getLatLng) {
+        const latlng = feature.getLatLng();
+        map.setView(latlng, 16); // Zoom level 16 para puntos
+      }
+      
+      // Abrir popup si existe
+      if (feature.getPopup()) {
+        feature.openPopup();
+      } else if (feature.bindPopup) {
+        // Si tiene bindPopup pero no está abierto, abrirlo
+        feature.openPopup();
+      }
+    } catch (err) {
+      console.error('Error al hacer zoom al objeto:', err);
+      // Fallback: zoom a toda la capa
+      if (layer.getBounds) {
+        map.fitBounds(layer.getBounds(), { padding: [50, 50] });
+      }
+    }
+  }
+};
+
+// Función para alternar visibilidad de una capa POA
 // Función para apagar todas las capas activas
 function apagarTodasLasCapas() {
   const checkboxes = document.querySelectorAll('input[id^="layer_"]');
@@ -3003,12 +3415,6 @@ function toggleBasemapPanel() {
 // Función para cambiar el mapa base desde el botón flotante
 function changeBasemapFloat(type) {
   changeBasemap(type);
-  
-  // Actualizar estados visuales
-  document.querySelectorAll('.basemap-option').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  document.getElementById('basemap-' + type).classList.add('active');
   
   // Cerrar el panel después de seleccionar
   setTimeout(() => {
@@ -3947,60 +4353,8 @@ function buscarCoordenadasFromPanel() {
 
 // Función para cambiar el mapa base desde el panel derecho
 function changeBasemapFromRight(type) {
-  // Usar la función existente changeBasemapFloat si existe, o implementar aquí
-  if (typeof changeBasemapFloat === 'function') {
-    changeBasemapFloat(type);
-  } else {
-    // Implementación alternativa
-    if (currentBasemap) {
-      map.removeLayer(currentBasemap);
-    }
-    
-    let newBasemap;
-    switch(type) {
-      case 'osm':
-        newBasemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
-          maxZoom: 19
-        });
-        break;
-      case 'satellite':
-        newBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-          attribution: '© Esri',
-          maxZoom: 19
-        });
-        break;
-      case 'topo':
-        newBasemap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-          attribution: '© Esri',
-          maxZoom: 19
-        });
-        break;
-    }
-    
-    if (newBasemap) {
-      newBasemap.addTo(map);
-      currentBasemap = newBasemap;
-    }
-  }
-  
-  // Actualizar los estilos activos en el panel derecho
-  document.querySelectorAll('.basemap-option-right').forEach(option => {
-    option.classList.remove('active');
-  });
-  const activeOption = document.getElementById(`basemap-${type}-right`);
-  if (activeOption) {
-    activeOption.classList.add('active');
-  }
-  
-  // Actualizar también el panel flotante original si existe
-  document.querySelectorAll('.basemap-option').forEach(option => {
-    option.classList.remove('active');
-  });
-  const originalOption = document.getElementById(`basemap-${type}`);
-  if (originalOption) {
-    originalOption.classList.add('active');
-  }
+  // Simplemente llamar a la función principal changeBasemap
+  changeBasemap(type);
 }
 
 // Función para manejar la carga de archivos KML desde el panel derecho

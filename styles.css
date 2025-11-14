@@ -2194,6 +2194,31 @@
       transform: scale(1.1);
     }
     
+    /* Estilos para botones especiales del POA 2025 */
+    .view-objects-btn, .hide-layer-btn {
+      width: 24px;
+      height: 24px;
+      padding: 2px;
+      background: rgba(138, 32, 53, 0.1);
+      border: none;
+      border-radius: 4px;
+      cursor: default;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .view-objects-btn:hover, .hide-layer-btn:hover {
+      background: rgba(138, 32, 53, 0.2);
+      transform: scale(1.1);
+    }
+    
+    .view-objects-btn svg, .hide-layer-btn svg {
+      width: 100%;
+      height: 100%;
+    }
+    
     .zoom-btn svg {
       width: 100%;
       height: 100%;
@@ -2518,6 +2543,248 @@
     
     .kml-expand-btn.expanded svg {
       transform: rotate(180deg);
+    }
+    
+    /* === Estilos para capas POA 2025 (estructura tipo KML) === */
+    .poa-layer-item {
+      background: white;
+      border: 1.5px solid rgba(185, 144, 86, 0.3);
+      border-radius: 5px;
+      padding: 6px;
+      margin-bottom: 5px;
+      transition: all 0.2s;
+    }
+    
+    .poa-layer-item:hover {
+      background: rgba(185, 144, 86, 0.05);
+      border-color: #b99056;
+      transform: translateX(2px);
+    }
+    
+    .poa-layer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .poa-layer-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      gap: 2px;
+      min-width: 0;
+    }
+    
+    .poa-layer-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: default;
+    }
+    
+    .poa-layer-checkbox input[type="checkbox"] {
+      cursor: default;
+    }
+    
+    .poa-layer-name {
+      font-size: 10px;
+      font-weight: 600;
+      color: #8a2035;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .poa-empty-badge {
+      color: #ff6b6b;
+      font-size: 8px;
+      font-weight: normal;
+      margin-left: 3px;
+    }
+    
+    .poa-layer-count {
+      font-size: 8px;
+      color: #666;
+      margin-left: 20px;
+    }
+    
+    .poa-layer-actions {
+      display: flex;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+    
+    .poa-action-btn, .poa-expand-btn {
+      width: 22px;
+      height: 22px;
+      padding: 3px;
+      background: rgba(185, 144, 86, 0.1);
+      border: 1px solid rgba(185, 144, 86, 0.3);
+      border-radius: 3px;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .poa-action-btn:hover, .poa-expand-btn:hover {
+      background: rgba(185, 144, 86, 0.2);
+      border-color: #b99056;
+      transform: scale(1.1);
+    }
+    
+    .poa-expand-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .poa-expand-btn:disabled:hover {
+      background: rgba(185, 144, 86, 0.1);
+      border-color: rgba(185, 144, 86, 0.3);
+      transform: none;
+    }
+    
+    .poa-action-btn svg, .poa-expand-btn svg {
+      width: 12px;
+      height: 12px;
+      transition: transform 0.2s;
+    }
+    
+    .poa-expand-btn.expanded svg {
+      transform: rotate(180deg);
+    }
+    
+    .poa-action-btn.visibility-btn.hidden svg {
+      opacity: 0.4;
+    }
+    
+    /* Lista de objetos POA */
+    .poa-objects-list {
+      display: none;
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px solid rgba(185, 144, 86, 0.2);
+      max-height: 100px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    
+    .poa-objects-list.expanded {
+      display: block;
+    }
+    
+    .poa-object-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px 5px;
+      background: rgba(185, 144, 86, 0.05);
+      border-radius: 3px;
+      margin-bottom: 3px;
+      font-size: 9px;
+      transition: all 0.2s;
+    }
+    
+    .poa-object-item:hover {
+      background: rgba(185, 144, 86, 0.12);
+      transform: translateX(2px);
+    }
+    
+    .poa-object-item.hidden {
+      opacity: 0.4;
+      background: rgba(0, 0, 0, 0.02);
+    }
+    
+    .poa-object-item.hidden .poa-object-name {
+      text-decoration: line-through;
+      color: #999;
+    }
+    
+    .poa-object-name {
+      flex: 1;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-right: 5px;
+      font-weight: 500;
+    }
+    
+    .poa-object-actions {
+      display: flex;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+    
+    .poa-object-hide-btn {
+      width: 18px;
+      height: 18px;
+      padding: 2px;
+      background: rgba(138, 32, 53, 0.1);
+      border: 1px solid rgba(138, 32, 53, 0.2);
+      border-radius: 3px;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .poa-object-hide-btn:hover {
+      background: rgba(138, 32, 53, 0.2);
+      transform: scale(1.15);
+    }
+    
+    .poa-object-hide-btn svg {
+      width: 11px;
+      height: 11px;
+    }
+    
+    .poa-object-zoom-btn {
+      width: 18px;
+      height: 18px;
+      padding: 2px;
+      background: rgba(138, 32, 53, 0.1);
+      border: 1px solid rgba(138, 32, 53, 0.2);
+      border-radius: 3px;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    
+    .poa-object-zoom-btn:hover {
+      background: rgba(138, 32, 53, 0.2);
+      transform: scale(1.15);
+    }
+    
+    .poa-object-zoom-btn svg {
+      width: 11px;
+      height: 11px;
+    }
+    
+    /* Scrollbar para lista de objetos POA */
+    .poa-objects-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    .poa-objects-list::-webkit-scrollbar-track {
+      background: rgba(185, 144, 86, 0.05);
+      border-radius: 2px;
+    }
+    
+    .poa-objects-list::-webkit-scrollbar-thumb {
+      background: rgba(185, 144, 86, 0.3);
+      border-radius: 2px;
+    }
+    
+    .poa-objects-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(185, 144, 86, 0.5);
     }
     
     /* Scrollbar personalizada dorada para la lista de KML */
