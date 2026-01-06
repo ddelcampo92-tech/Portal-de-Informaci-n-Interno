@@ -9,6 +9,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   
+  <!-- Turf.js para operaciones espaciales -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+  
   <!-- MapLibre GL JS para visualización de relieve -->
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
@@ -40,100 +43,38 @@
       <div id="status"></div>
     </div>
     
-    <div class="tools-section">
-      <h3>Herramientas</h3>
-      <div class="tools-grid">
-        <button class="tool-btn" id="measure-btn" onclick="toggleMeasure()">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <!-- Regla de medir -->
-              <path d="M2 4h20v16H2V4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="2" y1="4" x2="2" y2="20" stroke="currentColor" stroke-width="2"/>
-              <line x1="5" y1="4" x2="5" y2="9" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="8" y1="4" x2="8" y2="12" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="11" y1="4" x2="11" y2="9" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="14" y1="4" x2="14" y2="12" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="17" y1="4" x2="17" y2="9" stroke="currentColor" stroke-width="1.5"/>
-              <line x1="20" y1="4" x2="20" y2="12" stroke="currentColor" stroke-width="1.5"/>
-              <text x="12" y="18" font-size="5" fill="currentColor" text-anchor="middle" font-weight="bold">cm</text>
+    <!-- Sección de Filtro por Municipio -->
+    <div class="municipio-filter-section">
+      <h3>
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+          <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
+        </svg>
+        Filtro por Municipio
+      </h3>
+      <select id="municipio-select" onchange="filtrarPorMunicipio()">
+        <option value="">-- Seleccionar Municipio --</option>
+      </select>
+      <div id="municipio-stats" class="municipio-stats-container" style="display: none;">
+        <div class="municipio-stats-header">
+          <span id="municipio-nombre-selected">Municipio</span>
+          <button class="municipio-clear-btn" onclick="limpiarFiltroMunicipio()" title="Limpiar filtro">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" style="width: 14px; height: 14px;">
+              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
             </svg>
-          </span>
-          <span class="label">Medir<br>Distancia</span>
-        </button>
-        <button class="tool-btn" id="profile-btn" onclick="toggleProfile()">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/>
-            </svg>
-          </span>
-          <span class="label">Perfil de<br>Elevación</span>
-        </button>
-        <button class="tool-btn" id="search-btn" onclick="toggleSearchSidebar()">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
-            </svg>
-          </span>
-          <span class="label">Buscar<br>Coordenadas</span>
-        </button>
-        <button class="tool-btn" id="area-btn" onclick="toggleArea()">
-          <span class="icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-              <!-- Polígono -->
-              <polygon points="12,3 20,8 18,17 6,17 4,8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-              <!-- Puntos de vértices -->
-              <circle cx="12" cy="3" r="1.5" fill="currentColor"/>
-              <circle cx="20" cy="8" r="1.5" fill="currentColor"/>
-              <circle cx="18" cy="17" r="1.5" fill="currentColor"/>
-              <circle cx="6" cy="17" r="1.5" fill="currentColor"/>
-              <circle cx="4" cy="8" r="1.5" fill="currentColor"/>
-              <!-- Mediciones -->
-              <text x="12" y="11" font-size="4.5" fill="currentColor" text-anchor="middle" font-weight="bold">A=</text>
-              <text x="16" y="6" font-size="3.5" fill="currentColor" font-weight="bold">m</text>
-              <text x="8" y="13" font-size="3.5" fill="currentColor" font-weight="bold">m</text>
-            </svg>
-          </span>
-          <span class="label">Calcular<br>Área</span>
-        </button>
-      </div>
-      <div id="coord-search-inputs" style="display: none; margin-top: 10px;">
-        <div style="display: flex; flex-direction: column; gap: 8px;">
-          <div style="display: flex; gap: 8px;">
-            <input type="number" class="coord-input" id="search-lat" placeholder="Latitud" step="0.0001" style="flex: 1;" />
-            <input type="number" class="coord-input" id="search-lon" placeholder="Longitud" step="0.0001" style="flex: 1;" />
-          </div>
-          <button class="tool-btn" style="width: 100%; aspect-ratio: auto; height: auto; padding: 10px;" onclick="buscarCoordenadasSidebar()">
-            <span class="label" style="font-size: 12px;">Ir a ubicación</span>
           </button>
+        </div>
+        <div class="municipio-stats-grid" id="municipio-stats-grid">
+          <!-- Los stats se generarán dinámicamente -->
+        </div>
+        <div class="municipio-area-box" id="municipio-area-box">
+          <div class="municipio-area-label">Extensión Total</div>
+          <div class="municipio-area-value" id="municipio-area-value">-- km²</div>
         </div>
       </div>
     </div>
     
-    <!-- Sección de carga de KML/KMZ -->
-    <div class="kml-section">
-      <h3>Cargar KML/KMZ</h3>
-      
-      <input type="file" id="kml-file-input" accept=".kml,.kmz" style="display: none;" onchange="handleKmlUpload(event)">
-      
-      <div class="kml-buttons-row">
-        <button class="kml-upload-btn" onclick="document.getElementById('kml-file-input').click()">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" style="width: 16px; height: 16px; margin-right: 6px;">
-            <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
-          </svg>
-          Seleccionar archivo
-        </button>
-        
-        <button class="kml-clear-btn-simple" onclick="clearAllKml()" id="clear-kml-btn" disabled title="Limpiar todos los archivos KML/KMZ">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" style="width: 18px; height: 18px;">
-            <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-          </svg>
-        </button>
-      </div>
-      
-      <div id="kml-layers-list-sidebar">
-        <div class="kml-empty-state">No hay archivos cargados</div>
-      </div>
-    </div>
+    <!-- Input oculto para carga de KML/KMZ (usado por la barra de herramientas) -->
+    <input type="file" id="kml-file-input" accept=".kml,.kmz" style="display: none;" onchange="handleKmlUpload(event)">
     
     <div id="layers-section" style="display: none;">
       <h3>Capas Disponibles</h3>
@@ -569,7 +510,7 @@
   
   <script src="script.js"></script>
   
-  <!-- Script para etiquetas expandibles de la barra derecha -->
+  <!-- Script para etiquetas expandibles de la barra de herramientas -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       const toolbarButtons = document.querySelectorAll('.toolbar-btn[title]');
@@ -581,39 +522,41 @@
         label.textContent = button.getAttribute('title');
         label.style.cssText = `
           position: fixed;
-          height: 40px;
+          height: 28px;
           display: flex;
           align-items: center;
-          padding: 0 20px;
+          justify-content: center;
+          padding: 0 12px;
           background: #8a2035;
           color: white;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 600;
           white-space: nowrap;
-          border-radius: 8px 0 0 8px;
+          border-radius: 6px;
           pointer-events: none;
           z-index: 100000;
-          box-shadow: -3px 0 10px rgba(0, 0, 0, 0.3);
+          box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.3);
           opacity: 0;
-          transform: translateX(20px);
+          transform: translateY(10px);
           transition: opacity 0.3s ease, transform 0.3s ease;
         `;
         
         // Agregar al body
         document.body.appendChild(label);
         
-        // Eventos de hover
+        // Eventos de hover - etiqueta aparece ARRIBA del botón
         button.addEventListener('mouseenter', function() {
           const rect = button.getBoundingClientRect();
-          label.style.top = rect.top + 'px';
-          label.style.right = (window.innerWidth - rect.left + 5) + 'px';
+          const labelWidth = label.offsetWidth;
+          label.style.bottom = (window.innerHeight - rect.top + 8) + 'px';
+          label.style.left = (rect.left + rect.width/2 - labelWidth/2) + 'px';
           label.style.opacity = '1';
-          label.style.transform = 'translateX(0)';
+          label.style.transform = 'translateY(0)';
         });
         
         button.addEventListener('mouseleave', function() {
           label.style.opacity = '0';
-          label.style.transform = 'translateX(20px)';
+          label.style.transform = 'translateY(10px)';
         });
       });
     });
