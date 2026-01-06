@@ -9,9 +9,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   
-  <!-- Turf.js para operaciones espaciales -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
-  
   <!-- MapLibre GL JS para visualización de relieve -->
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
@@ -43,38 +40,31 @@
       <div id="status"></div>
     </div>
     
-    <!-- Sección de Filtro por Municipio -->
-    <div class="municipio-filter-section">
-      <h3>
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-          <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/>
-        </svg>
-        Filtro por Municipio
-      </h3>
-      <select id="municipio-select" onchange="filtrarPorMunicipio()">
-        <option value="">-- Seleccionar Municipio --</option>
-      </select>
-      <div id="municipio-stats" class="municipio-stats-container" style="display: none;">
-        <div class="municipio-stats-header">
-          <span id="municipio-nombre-selected">Municipio</span>
-          <button class="municipio-clear-btn" onclick="limpiarFiltroMunicipio()" title="Limpiar filtro">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor" style="width: 14px; height: 14px;">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="municipio-stats-grid" id="municipio-stats-grid">
-          <!-- Los stats se generarán dinámicamente -->
-        </div>
-        <div class="municipio-area-box" id="municipio-area-box">
-          <div class="municipio-area-label">Extensión Total</div>
-          <div class="municipio-area-value" id="municipio-area-value">-- km²</div>
-        </div>
+    <!-- Sección de carga de KML/KMZ -->
+    <div class="kml-section">
+      <h3>Cargar KML/KMZ</h3>
+      
+      <input type="file" id="kml-file-input" accept=".kml,.kmz" style="display: none;" onchange="handleKmlUpload(event)">
+      
+      <div class="kml-buttons-row">
+        <button class="kml-upload-btn" onclick="document.getElementById('kml-file-input').click()">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" style="width: 16px; height: 16px; margin-right: 6px;">
+            <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/>
+          </svg>
+          Seleccionar archivo
+        </button>
+        
+        <button class="kml-clear-btn-simple" onclick="clearAllKml()" id="clear-kml-btn" disabled title="Limpiar todos los archivos KML/KMZ">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="white" style="width: 18px; height: 18px;">
+            <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+          </svg>
+        </button>
+      </div>
+      
+      <div id="kml-layers-list-sidebar">
+        <div class="kml-empty-state">No hay archivos cargados</div>
       </div>
     </div>
-    
-    <!-- Input oculto para carga de KML/KMZ (usado por la barra de herramientas) -->
-    <input type="file" id="kml-file-input" accept=".kml,.kmz" style="display: none;" onchange="handleKmlUpload(event)">
     
     <div id="layers-section" style="display: none;">
       <h3>Capas Disponibles</h3>
